@@ -3,6 +3,7 @@ package com.skyeshade.skyesight.client.view;
 import com.skyeshade.skyesight.api.SkyesightViewCamera;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 
@@ -59,13 +60,43 @@ public final class SkyesightInternalCamera implements SkyesightViewCamera {
 
     @Override
     public void copyFromMainCamera() {
-        Camera mainCamera = Minecraft.getInstance().gameRenderer.getMainCamera();
-        this.camera.copyFrom(mainCamera);
+        Minecraft minecraft = Minecraft.getInstance();
+        LocalPlayer player = minecraft.player;
+
+        if (player == null) {
+            Camera mainCamera = minecraft.gameRenderer.getMainCamera();
+            this.camera.copyFrom(mainCamera);
+            return;
+        }
+
+        float partialTick = minecraft.getTimer().getGameTimeDeltaPartialTick(true);
+
+        Vec3 eyePosition = player.getEyePosition(partialTick);
+        float yaw = player.getViewYRot(partialTick);
+        float pitch = player.getViewXRot(partialTick);
+
+        this.camera.setPositionPublic(eyePosition);
+        this.camera.setRotationPublic(yaw, pitch, 0.0F);
     }
 
     @Override
     public void copyFromMainCameraWithOffset(Vec3 offset) {
-        Camera mainCamera = Minecraft.getInstance().gameRenderer.getMainCamera();
-        this.camera.copyFromWithOffset(mainCamera, offset);
+        Minecraft minecraft = Minecraft.getInstance();
+        LocalPlayer player = minecraft.player;
+
+        if (player == null) {
+            Camera mainCamera = minecraft.gameRenderer.getMainCamera();
+            this.camera.copyFromWithOffset(mainCamera, offset);
+            return;
+        }
+
+        float partialTick = minecraft.getTimer().getGameTimeDeltaPartialTick(true);
+
+        Vec3 eyePosition = player.getEyePosition(partialTick).add(offset);
+        float yaw = player.getViewYRot(partialTick);
+        float pitch = player.getViewXRot(partialTick);
+
+        this.camera.setPositionPublic(eyePosition);
+        this.camera.setRotationPublic(yaw, pitch, 0.0F);
     }
 }
