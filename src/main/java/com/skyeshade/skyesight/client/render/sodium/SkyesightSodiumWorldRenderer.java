@@ -2,6 +2,7 @@ package com.skyeshade.skyesight.client.render.sodium;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.skyeshade.skyesight.client.render.entity.SkyesightNameTagSuppressor;
 import com.skyeshade.skyesight.client.world.SkyesightVisualEntity;
 import net.caffeinemc.mods.sodium.client.gl.device.RenderDevice;
 import net.caffeinemc.mods.sodium.client.render.SodiumWorldRenderer;
@@ -78,22 +79,25 @@ public final class SkyesightSodiumWorldRenderer implements AutoCloseable {
         try {
             this.minecraft.level = this.level;
 
-            for (SkyesightVisualEntity visualEntity : entities) {
-                visualEntity.applyInterpolated();
+            try (SkyesightNameTagSuppressor.Scope ignored =
+                         SkyesightNameTagSuppressor.suppressOwner(this.minecraft.player.getUUID())) {
+                for (SkyesightVisualEntity visualEntity : entities) {
+                    visualEntity.applyInterpolated();
 
-                Entity entity = visualEntity.entity();
+                    Entity entity = visualEntity.entity();
 
-                this.minecraft.getEntityRenderDispatcher().render(
-                        entity,
-                        entity.getX() - cameraPos.x(),
-                        entity.getY() - cameraPos.y(),
-                        entity.getZ() - cameraPos.z(),
-                        entity.getYRot(),
-                        partialTick,
-                        poseStack,
-                        bufferSource,
-                        this.minecraft.getEntityRenderDispatcher().getPackedLightCoords(entity, partialTick)
-                );
+                    this.minecraft.getEntityRenderDispatcher().render(
+                            entity,
+                            entity.getX() - cameraPos.x(),
+                            entity.getY() - cameraPos.y(),
+                            entity.getZ() - cameraPos.z(),
+                            entity.getYRot(),
+                            partialTick,
+                            poseStack,
+                            bufferSource,
+                            this.minecraft.getEntityRenderDispatcher().getPackedLightCoords(entity, partialTick)
+                    );
+                }
             }
 
             bufferSource.endBatch();
