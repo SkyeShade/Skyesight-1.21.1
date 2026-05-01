@@ -7,6 +7,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 
 import java.util.*;
+import java.util.function.BiConsumer;
 
 public final class SkyesightServerViewTracker {
     private static final Map<UUID, Map<ResourceLocation, ViewWatch>> WATCHES = new HashMap<>();
@@ -27,8 +28,35 @@ public final class SkyesightServerViewTracker {
 
         playerWatches.put(
                 viewId,
-                new ViewWatch(viewId, dimension, centerChunkX, centerChunkZ, radius, Set.copyOf(chunks))
+                new ViewWatch(
+                        viewId,
+                        dimension,
+                        centerChunkX,
+                        centerChunkZ,
+                        radius,
+                        Set.copyOf(chunks)
+                )
         );
+    }
+
+    public static ViewWatch getWatch(ServerPlayer player, ResourceLocation viewId) {
+        Map<ResourceLocation, ViewWatch> playerWatches = WATCHES.get(player.getUUID());
+
+        if (playerWatches == null) {
+            return null;
+        }
+
+        return playerWatches.get(viewId);
+    }
+
+    public static void forEachWatch(BiConsumer<UUID, ViewWatch> consumer) {
+        for (Map.Entry<UUID, Map<ResourceLocation, ViewWatch>> playerEntry : WATCHES.entrySet()) {
+            UUID playerId = playerEntry.getKey();
+
+            for (ViewWatch watch : playerEntry.getValue().values()) {
+                consumer.accept(playerId, watch);
+            }
+        }
     }
 
     public static void removePlayer(ServerPlayer player) {
@@ -45,7 +73,7 @@ public final class SkyesightServerViewTracker {
             UUID playerId = playerEntry.getKey();
 
             for (ViewWatch watch : playerEntry.getValue().values()) {
-                if (watch.dimension() != dimension) {
+                if (!watch.dimension().equals(dimension)) {
                     continue;
                 }
 

@@ -2,6 +2,7 @@ package com.skyeshade.skyesight.client.render.sodium;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.skyeshade.skyesight.client.world.SkyesightVisualEntity;
 import net.caffeinemc.mods.sodium.client.gl.device.RenderDevice;
 import net.caffeinemc.mods.sodium.client.render.SodiumWorldRenderer;
 import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;
@@ -11,9 +12,11 @@ import net.caffeinemc.mods.sodium.client.render.viewport.ViewportProvider;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 
@@ -54,7 +57,57 @@ public final class SkyesightSodiumWorldRenderer implements AutoCloseable {
             RenderDevice.exitManagedCode();
         }
     }
+    public void renderEntities(
+            Iterable<SkyesightVisualEntity> entities,
+            Camera camera,
+            Matrix4f modelMatrix,
+            float partialTick
+    ) {
+        if (this.level == null || this.minecraft.player == null) {
+            return;
+        }
 
+        PoseStack poseStack = new PoseStack();
+        poseStack.mulPose(modelMatrix);
+
+        Vec3 cameraPos = camera.getPosition();
+        MultiBufferSource.BufferSource bufferSource = this.minecraft.renderBuffers().bufferSource();
+
+        ClientLevel previousLevel = this.minecraft.level;
+
+        try {
+            this.minecraft.level = this.level;
+
+            for (SkyesightVisualEntity visualEntity : entities) {
+                visualEntity.applyInterpolated();
+
+                Entity entity = visualEntity.entity();
+
+                this.minecraft.getEntityRenderDispatcher().render(
+                        entity,
+                        entity.getX() - cameraPos.x(),
+                        entity.getY() - cameraPos.y(),
+                        entity.getZ() - cameraPos.z(),
+                        entity.getYRot(),
+                        partialTick,
+                        poseStack,
+                        bufferSource,
+                        this.minecraft.getEntityRenderDispatcher().getPackedLightCoords(entity, partialTick)
+                );
+            }
+
+            bufferSource.endBatch();
+        } finally {
+            this.minecraft.level = previousLevel;
+
+            RenderSystem.disableBlend();
+            RenderSystem.defaultBlendFunc();
+            RenderSystem.enableDepthTest();
+            RenderSystem.depthMask(true);
+            RenderSystem.enableCull();
+            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        }
+    }
     public void renderTerrain(
             Camera camera,
             Frustum frustum,

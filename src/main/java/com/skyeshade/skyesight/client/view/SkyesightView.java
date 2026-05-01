@@ -228,6 +228,11 @@ public final class SkyesightView implements SkyesightViewHandle {
                 modelMatrix,
                 partialTick
         );
+        visualWorld.renderEntities(
+                this.camera.minecraftCamera(),
+                modelMatrix,
+                partialTick
+        );
         SkyesightFogRenderer.clear();
         SkyesightLightTextureUpdater.restoreMain(partialTick);
 

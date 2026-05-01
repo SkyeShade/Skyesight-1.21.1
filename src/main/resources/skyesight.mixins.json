@@ -3,10 +3,14 @@
   "package": "com.skyeshade.skyesight.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "client.sodium.SodiumWorldRendererMixin",
+
+    "common.WalkAnimationStateAccessor",
+    "common.LivingEntityWalkAnimationAccessor",
     "server.ServerLevelBlockUpdateMixin"
   ],
   "client": [
+
+    "client.sodium.SodiumWorldRendererMixin",
     "client.CameraInvoker",
     "client.LevelRendererAccessor",
     "client.LevelRendererCloudInvoker",

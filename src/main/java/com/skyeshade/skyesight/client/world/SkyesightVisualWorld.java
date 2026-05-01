@@ -19,7 +19,7 @@ public final class SkyesightVisualWorld implements AutoCloseable {
 
     private final SkyesightSodiumWorldRenderer renderer;
     private final SkyesightRemoteChunkReceiver chunkReceiver;
-
+    private final SkyesightVisualEntityStore entityStore;
     public SkyesightVisualWorld(
             ResourceKey<Level> dimension,
             ClientLevel level
@@ -28,6 +28,7 @@ public final class SkyesightVisualWorld implements AutoCloseable {
         this.level = level;
         this.chunkTracker = new ChunkTracker();
         this.chunkReceiver = new SkyesightRemoteChunkReceiver(level, this.chunkTracker);
+        this.entityStore = new SkyesightVisualEntityStore(level);
         this.renderer = new SkyesightSodiumWorldRenderer(Minecraft.getInstance(), this.chunkTracker);
         this.renderer.setLevel(level);
 
@@ -35,7 +36,9 @@ public final class SkyesightVisualWorld implements AutoCloseable {
     public SkyesightRemoteChunkReceiver chunkReceiver() {
         return this.chunkReceiver;
     }
-
+    public SkyesightVisualEntityStore entityStore() {
+        return this.entityStore;
+    }
     public SkyesightSodiumWorldRenderer renderer() {
         return this.renderer;
     }
@@ -67,6 +70,18 @@ public final class SkyesightVisualWorld implements AutoCloseable {
                 partialTick
         );
     }
+    public void renderEntities(
+            Camera camera,
+            Matrix4f modelMatrix,
+            float partialTick
+    ) {
+        this.renderer.renderEntities(
+                this.entityStore.entities(),
+                camera,
+                modelMatrix,
+                partialTick
+        );
+    }
     public ResourceKey<Level> dimension() {
         return dimension;
     }
@@ -81,6 +96,7 @@ public final class SkyesightVisualWorld implements AutoCloseable {
 
     @Override
     public void close() {
+        this.entityStore.clear();
         this.renderer.close();
     }
 }

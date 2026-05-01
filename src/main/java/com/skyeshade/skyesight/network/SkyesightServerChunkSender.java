@@ -1,6 +1,7 @@
 package com.skyeshade.skyesight.network;
 
 import com.skyeshade.skyesight.Skyesight;
+import com.skyeshade.skyesight.server.SkyesightServerEntitySnapshotSender;
 import com.skyeshade.skyesight.server.SkyesightServerViewTracker;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
 import net.minecraft.network.protocol.game.ClientboundLightUpdatePacketData;
@@ -100,7 +101,12 @@ public final class SkyesightServerChunkSender {
                     payload.radius(),
                     watchedChunks
             );
+            SkyesightServerViewTracker.ViewWatch watch =
+                    SkyesightServerViewTracker.getWatch(player, payload.viewId());
 
+            if (watch != null) {
+                SkyesightServerEntitySnapshotSender.sendSnapshot(player, watch, level);
+            }
             Skyesight.LOGGER.info(
                     "[Skyesight] Sent {} chunks for view {} and watching {} chunks around {}, {}",
                     sent,
