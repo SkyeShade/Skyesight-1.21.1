@@ -1,6 +1,7 @@
 package com.skyeshade.skyesight.network;
 
 import com.skyeshade.skyesight.Skyesight;
+import com.skyeshade.skyesight.server.SkyesightServerChunkSender;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 

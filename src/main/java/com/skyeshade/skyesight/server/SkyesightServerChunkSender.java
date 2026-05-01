@@ -1,8 +1,8 @@
-package com.skyeshade.skyesight.network;
+package com.skyeshade.skyesight.server;
 
 import com.skyeshade.skyesight.Skyesight;
-import com.skyeshade.skyesight.server.SkyesightServerEntitySnapshotSender;
-import com.skyeshade.skyesight.server.SkyesightServerViewTracker;
+import com.skyeshade.skyesight.network.SkyesightChunkDataPayload;
+import com.skyeshade.skyesight.network.SkyesightChunkRequestPayload;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
 import net.minecraft.network.protocol.game.ClientboundLightUpdatePacketData;
 import net.minecraft.server.level.ServerLevel;
@@ -30,7 +30,16 @@ public final class SkyesightServerChunkSender {
             }
 
             ServerLevel level = player.server.getLevel(payload.dimension());
+            int loadRadius = payload.radius();
 
+            SkyesightServerChunkLoader.updateLoadedView(
+                    player,
+                    payload.viewId(),
+                    level,
+                    payload.centerChunkX(),
+                    payload.centerChunkZ(),
+                    loadRadius
+            );
             if (level == null) {
                 Skyesight.LOGGER.warn(
                         "[Skyesight] Ignoring chunk request for missing dimension {}",
