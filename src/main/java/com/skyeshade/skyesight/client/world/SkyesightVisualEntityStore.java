@@ -1,7 +1,11 @@
 package com.skyeshade.skyesight.client.world;
 
+import com.mojang.authlib.GameProfile;
+import com.skyeshade.skyesight.Skyesight;
 import com.skyeshade.skyesight.network.SkyesightEntitySnapshotPayload;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.RemotePlayer;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -55,10 +59,27 @@ public final class SkyesightVisualEntityStore {
     }
 
     private Entity createEntity(SkyesightEntitySnapshotPayload.Entry entry) {
-        EntityType<?> type = entry.type();
-        Entity entity = type.create(this.level);
+        if (entry.type() == EntityType.PLAYER) {
+            String name = entry.profileName();
+
+            if (name == null || name.isBlank()) {
+                name = "SkyesightPlayer";
+            }
+
+            return new RemotePlayer(
+                    this.level,
+                    new GameProfile(entry.uuid(), name)
+            );
+        }
+
+        Entity entity = entry.type().create(this.level);
 
         if (entity == null) {
+            Skyesight.LOGGER.warn(
+                    "[Skyesight] Failed to create visual entity type={} uuid={}",
+                    BuiltInRegistries.ENTITY_TYPE.getKey(entry.type()),
+                    entry.uuid()
+            );
             return null;
         }
 

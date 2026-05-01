@@ -1,5 +1,6 @@
 package com.skyeshade.skyesight.server;
 
+import com.skyeshade.skyesight.Skyesight;
 import com.skyeshade.skyesight.mixin.common.LivingEntityWalkAnimationAccessor;
 import com.skyeshade.skyesight.mixin.common.WalkAnimationStateAccessor;
 import com.skyeshade.skyesight.network.SkyesightEntitySnapshotPayload;
@@ -7,6 +8,7 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.WalkAnimationState;
 import net.minecraft.world.phys.AABB;
@@ -21,7 +23,7 @@ public final class SkyesightServerEntitySnapshotSender {
     private SkyesightServerEntitySnapshotSender() {}
 
     public static void sendSnapshot(
-            ServerPlayer player,
+            ServerPlayer receivingPlayer,
             SkyesightServerViewTracker.ViewWatch watch,
             ServerLevel level
     ) {
@@ -40,72 +42,96 @@ public final class SkyesightServerEntitySnapshotSender {
 
         List<SkyesightEntitySnapshotPayload.Entry> entries = new ArrayList<>();
 
-        for (Entity entity : level.getEntities(player, area, ignored -> true)) {
+        for (Entity entity : level.getEntities((Entity) null, area, entity -> true)) {
             if (entries.size() >= MAX_ENTITIES_PER_SNAPSHOT) {
                 break;
             }
 
-            boolean living = entity instanceof LivingEntity;
+            entries.add(createEntry(entity));
+        }
 
-            float yBodyRot = entity.getYRot();
-            float yBodyRotO = entity.getYRot();
-            float yHeadRot = entity.getYRot();
-            float yHeadRotO = entity.getYRot();
-
-            float walkPosition = 0.0F;
-            float walkSpeed = 0.0F;
-            float walkSpeedOld = 0.0F;
-
-            if (entity instanceof LivingEntity livingEntity) {
-                yBodyRot = livingEntity.yBodyRot;
-                yBodyRotO = livingEntity.yBodyRotO;
-                yHeadRot = livingEntity.yHeadRot;
-                yHeadRotO = livingEntity.yHeadRotO;
-
-                WalkAnimationState walkAnimation =
-                        ((LivingEntityWalkAnimationAccessor) livingEntity).skyesight$getWalkAnimation();
-
-                WalkAnimationStateAccessor walkAccessor =
-                        (WalkAnimationStateAccessor) walkAnimation;
-
-                walkPosition = walkAccessor.skyesight$getPosition();
-                walkSpeed = walkAccessor.skyesight$getSpeed();
-                walkSpeedOld = walkAccessor.skyesight$getSpeedOld();
+        for (ServerPlayer player : level.players()) {
+            if (entries.size() >= MAX_ENTITIES_PER_SNAPSHOT) {
+                break;
             }
 
-            List<SynchedEntityData.DataValue<?>> entityData =
-                    entity.getEntityData().getNonDefaultValues();
-
-            if (entityData == null) {
-                entityData = List.of();
+            if (!area.contains(player.position())) {
+                continue;
             }
 
-            entries.add(new SkyesightEntitySnapshotPayload.Entry(
-                    entity.getUUID(),
-                    entity.getType(),
-                    entity.position(),
-                    entity.getYRot(),
-                    entity.getXRot(),
-                    living,
-                    entity.tickCount,
-                    yBodyRot,
-                    yBodyRotO,
-                    yHeadRot,
-                    yHeadRotO,
-                    walkPosition,
-                    walkSpeed,
-                    walkSpeedOld,
-                    entityData
-            ));
+            entries.add(createEntry(player));
         }
 
         PacketDistributor.sendToPlayer(
-                player,
+                receivingPlayer,
                 new SkyesightEntitySnapshotPayload(
                         watch.viewId(),
                         level.dimension(),
                         entries
                 )
+        );
+    }
+
+    private static SkyesightEntitySnapshotPayload.Entry createEntry(Entity entity) {
+        boolean living = entity instanceof LivingEntity;
+
+        float yBodyRot = entity.getYRot();
+        float yBodyRotO = entity.getYRot();
+        float yHeadRot = entity.getYRot();
+        float yHeadRotO = entity.getYRot();
+
+        float walkPosition = 0.0F;
+        float walkSpeed = 0.0F;
+        float walkSpeedOld = 0.0F;
+
+        if (entity instanceof LivingEntity livingEntity) {
+            yBodyRot = livingEntity.yBodyRot;
+            yBodyRotO = livingEntity.yBodyRotO;
+            yHeadRot = livingEntity.yHeadRot;
+            yHeadRotO = livingEntity.yHeadRotO;
+
+            WalkAnimationState walkAnimation =
+                    ((LivingEntityWalkAnimationAccessor) livingEntity).skyesight$getWalkAnimation();
+
+            WalkAnimationStateAccessor walkAccessor =
+                    (WalkAnimationStateAccessor) walkAnimation;
+
+            walkPosition = walkAccessor.skyesight$getPosition();
+            walkSpeed = walkAccessor.skyesight$getSpeed();
+            walkSpeedOld = walkAccessor.skyesight$getSpeedOld();
+        }
+
+        List<SynchedEntityData.DataValue<?>> entityData =
+                entity.getEntityData().getNonDefaultValues();
+
+        if (entityData == null) {
+            entityData = List.of();
+        }
+        String profileName = "";
+
+        if (entity instanceof ServerPlayer player) {
+            profileName = player.getGameProfile().getName();
+        }
+        return new SkyesightEntitySnapshotPayload.Entry(
+                entity.getUUID(),
+                entity.getType(),
+                profileName,
+                entity.position(),
+                entity.getDeltaMovement(),
+                entity.onGround(),
+                entity.fallDistance,
+                entity.getYRot(),
+                entity.getXRot(),
+                living,
+                entity.tickCount,
+                yBodyRot,
+                yBodyRotO,
+                yHeadRot,
+                yHeadRotO,
+                walkPosition,
+                walkSpeed,
+                walkSpeedOld,
+                entityData
         );
     }
 }

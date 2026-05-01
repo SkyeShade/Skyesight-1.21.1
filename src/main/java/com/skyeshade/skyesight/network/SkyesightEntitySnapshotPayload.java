@@ -44,11 +44,18 @@ public record SkyesightEntitySnapshotPayload(
         for (int i = 0; i < count; i++) {
             UUID uuid = buffer.readUUID();
             EntityType<?> type = ENTITY_TYPE_CODEC.decode(buffer);
-
+            String profileName = buffer.readUtf();
             double x = buffer.readDouble();
             double y = buffer.readDouble();
             double z = buffer.readDouble();
+            Vec3 deltaMovement = new Vec3(
+                    buffer.readDouble(),
+                    buffer.readDouble(),
+                    buffer.readDouble()
+            );
 
+            boolean onGround = buffer.readBoolean();
+            float fallDistance = buffer.readFloat();
             float yRot = buffer.readFloat();
             float xRot = buffer.readFloat();
 
@@ -69,7 +76,11 @@ public record SkyesightEntitySnapshotPayload(
             entities.add(new Entry(
                     uuid,
                     type,
+                    profileName,
                     new Vec3(x, y, z),
+                    deltaMovement,
+                    onGround,
+                    fallDistance,
                     yRot,
                     xRot,
                     living,
@@ -101,11 +112,17 @@ public record SkyesightEntitySnapshotPayload(
         for (Entry entity : payload.entities()) {
             buffer.writeUUID(entity.uuid());
             ENTITY_TYPE_CODEC.encode(buffer, entity.type());
+            buffer.writeUtf(entity.profileName());
 
             buffer.writeDouble(entity.position().x());
             buffer.writeDouble(entity.position().y());
             buffer.writeDouble(entity.position().z());
+            buffer.writeDouble(entity.deltaMovement().x());
+            buffer.writeDouble(entity.deltaMovement().y());
+            buffer.writeDouble(entity.deltaMovement().z());
 
+            buffer.writeBoolean(entity.onGround());
+            buffer.writeFloat(entity.fallDistance());
             buffer.writeFloat(entity.yRot());
             buffer.writeFloat(entity.xRot());
 
@@ -161,7 +178,11 @@ public record SkyesightEntitySnapshotPayload(
     public record Entry(
             UUID uuid,
             EntityType<?> type,
+            String profileName,
             Vec3 position,
+            Vec3 deltaMovement,
+            boolean onGround,
+            float fallDistance,
             float yRot,
             float xRot,
             boolean living,

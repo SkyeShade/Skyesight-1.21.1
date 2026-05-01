@@ -7,6 +7,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.WalkAnimationState;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
 public final class SkyesightVisualEntity {
@@ -23,8 +24,6 @@ public final class SkyesightVisualEntity {
     private float previousXRot;
     private float currentXRot;
 
-    private int tickCount;
-
     private float previousYBodyRot;
     private float currentYBodyRot;
 
@@ -37,14 +36,29 @@ public final class SkyesightVisualEntity {
     private float previousYHeadRotO;
     private float currentYHeadRotO;
 
+    private int tickCount;
+
     private float walkPosition;
     private float walkSpeed;
     private float walkSpeedOld;
 
     private long snapshotStartMs;
     private long snapshotEndMs;
-
     private long animationSnapshotMs;
+
+    private Vec3 deltaMovement;
+    private boolean onGround;
+    private float fallDistance;
+
+
+    private float playerTargetWalkSpeed;
+    private float playerWalkSpeed;
+    private float playerWalkPosition;
+    private long playerAnimationStepMs;
+
+    private float playerBodyYaw;
+    private float playerBodyYawO;
+    private float playerTargetBodyYaw;
     public SkyesightVisualEntity(
             Entity entity,
             SkyesightEntitySnapshotPayload.Entry entry
@@ -52,17 +66,17 @@ public final class SkyesightVisualEntity {
         long now = System.currentTimeMillis();
 
         this.entity = entity;
+
         this.previousPosition = entry.position();
         this.currentPosition = entry.position();
-
+        this.deltaMovement = entry.deltaMovement();
+        this.onGround = entry.onGround();
+        this.fallDistance = entry.fallDistance();
         this.previousYRot = entry.yRot();
         this.currentYRot = entry.yRot();
 
         this.previousXRot = entry.xRot();
         this.currentXRot = entry.xRot();
-
-        this.snapshotStartMs = now;
-        this.snapshotEndMs = now + DEFAULT_SNAPSHOT_INTERVAL_MS;
 
         this.previousYBodyRot = entry.yBodyRot();
         this.currentYBodyRot = entry.yBodyRot();
@@ -75,7 +89,20 @@ public final class SkyesightVisualEntity {
 
         this.previousYHeadRotO = entry.yHeadRotO();
         this.currentYHeadRotO = entry.yHeadRotO();
+
+        this.snapshotStartMs = now;
+        this.snapshotEndMs = now + DEFAULT_SNAPSHOT_INTERVAL_MS;
+        this.animationSnapshotMs = now;
+
+        this.playerTargetWalkSpeed = 0.0F;
+        this.playerWalkSpeed = 0.0F;
+        this.playerWalkPosition = entry.walkPosition();
+        this.playerAnimationStepMs = now;
+        this.playerBodyYaw = entry.yBodyRot();
+        this.playerBodyYawO = entry.yBodyRotO();
+        this.playerTargetBodyYaw = entry.yBodyRot();
         acceptAnimation(entry);
+        updatePlayerMovementAnimation(entry.position(), entry.position());
         applyInterpolated();
     }
 
@@ -86,90 +113,182 @@ public final class SkyesightVisualEntity {
     public void acceptSnapshot(SkyesightEntitySnapshotPayload.Entry entry) {
         long now = System.currentTimeMillis();
 
-        this.previousPosition = interpolatedPosition(now);
+        Vec3 interpolatedPosition = interpolatedPosition(now);
+
+        this.previousPosition = interpolatedPosition;
+        this.deltaMovement = entry.deltaMovement();
+        this.onGround = entry.onGround();
+        this.fallDistance = entry.fallDistance();
         this.previousYRot = interpolatedYRot(now);
         this.previousXRot = interpolatedXRot(now);
+
+        this.previousYBodyRot = interpolatedYBodyRot(now);
+        this.previousYBodyRotO = interpolatedYBodyRotO(now);
+        this.previousYHeadRot = interpolatedYHeadRot(now);
+        this.previousYHeadRotO = interpolatedYHeadRotO(now);
 
         this.currentPosition = entry.position();
         this.currentYRot = entry.yRot();
         this.currentXRot = entry.xRot();
-
-        this.snapshotStartMs = now;
-        this.snapshotEndMs = now + DEFAULT_SNAPSHOT_INTERVAL_MS;
-
-        acceptAnimation(entry);
-    }
-
-    public void applyInterpolated() {
-        long now = System.currentTimeMillis();
-
-        Vec3 position = interpolatedPosition(now);
-        float yRot = interpolatedYRot(now);
-        float xRot = interpolatedXRot(now);
-
-        this.entity.tickCount = this.tickCount + Mth.floor(elapsedAnimationTicks());
-        this.entity.setPos(position);
-
-        this.entity.xo = position.x();
-        this.entity.yo = position.y();
-        this.entity.zo = position.z();
-
-        this.entity.setYRot(yRot);
-        this.entity.setXRot(xRot);
-
-        this.entity.yRotO = yRot;
-        this.entity.xRotO = xRot;
-
-        if (this.entity instanceof LivingEntity livingEntity) {
-            float elapsedTicks = elapsedAnimationTicks();
-
-            float alpha = interpolationAlpha(System.currentTimeMillis());
-
-            livingEntity.yBodyRot = lerpDegrees(alpha, this.previousYBodyRot, this.currentYBodyRot);
-            livingEntity.yBodyRotO = lerpDegrees(alpha, this.previousYBodyRotO, this.currentYBodyRotO);
-            livingEntity.yHeadRot = lerpDegrees(alpha, this.previousYHeadRot, this.currentYHeadRot);
-            livingEntity.yHeadRotO = lerpDegrees(alpha, this.previousYHeadRotO, this.currentYHeadRotO);
-
-            WalkAnimationState walkAnimation =
-                    ((LivingEntityWalkAnimationAccessor) livingEntity).skyesight$getWalkAnimation();
-
-            WalkAnimationStateAccessor accessor =
-                    (WalkAnimationStateAccessor) walkAnimation;
-
-            float extrapolatedWalkPosition =
-                    this.walkPosition + this.walkSpeed * elapsedTicks;
-
-            accessor.skyesight$setPosition(extrapolatedWalkPosition);
-            accessor.skyesight$setSpeed(this.walkSpeed);
-            accessor.skyesight$setSpeedOld(this.walkSpeedOld);
-        }
-    }
-    private float elapsedAnimationTicks() {
-        long now = System.currentTimeMillis();
-        long elapsedMs = Math.max(0L, now - this.animationSnapshotMs);
-
-        return elapsedMs / 50.0F;
-    }
-    private void acceptAnimation(SkyesightEntitySnapshotPayload.Entry entry) {
-        this.animationSnapshotMs = System.currentTimeMillis();
-
-        this.tickCount = entry.tickCount();
-
-        this.previousYBodyRot = this.currentYBodyRot;
-        this.previousYBodyRotO = this.currentYBodyRotO;
-        this.previousYHeadRot = this.currentYHeadRot;
-        this.previousYHeadRotO = this.currentYHeadRotO;
 
         this.currentYBodyRot = entry.yBodyRot();
         this.currentYBodyRotO = entry.yBodyRotO();
         this.currentYHeadRot = entry.yHeadRot();
         this.currentYHeadRotO = entry.yHeadRotO();
 
+        this.snapshotStartMs = now;
+        this.snapshotEndMs = now + DEFAULT_SNAPSHOT_INTERVAL_MS;
+
+        updatePlayerMovementAnimation(interpolatedPosition, entry.position());
+        acceptAnimation(entry);
+    }
+
+    public void applyInterpolated() {
+        long now = System.currentTimeMillis();
+        float alpha = interpolationAlpha(now);
+
+        Vec3 position = interpolatedPosition(now);
+
+        float yRot = interpolatedYRot(now);
+        float xRot = interpolatedXRot(now);
+
+        float elapsedTicks = elapsedAnimationTicks();
+
+        this.entity.tickCount = this.tickCount + Mth.floor(elapsedTicks);
+
+        this.entity.setPos(position);
+        this.entity.setDeltaMovement(this.deltaMovement);
+        this.entity.setOnGround(this.onGround);
+        this.entity.fallDistance = this.fallDistance;
+        this.entity.xo = position.x();
+        this.entity.yo = position.y();
+        this.entity.zo = position.z();
+
+        this.entity.setYRot(yRot);
+        this.entity.setXRot(xRot);
+        this.entity.yRotO = yRot;
+        this.entity.xRotO = xRot;
+
+        if (this.entity instanceof LivingEntity livingEntity) {
+            if (this.entity instanceof Player) {
+                stepPlayerBodyYaw();
+
+                float bodyYaw = lerpDegrees(alpha, this.playerBodyYawO, this.playerBodyYaw);
+
+                livingEntity.yBodyRotO = this.playerBodyYawO;
+                livingEntity.yBodyRot = bodyYaw;
+
+
+                livingEntity.yHeadRot = lerpDegrees(alpha, this.previousYHeadRot, this.currentYHeadRot);
+                livingEntity.yHeadRotO = lerpDegrees(alpha, this.previousYHeadRotO, this.currentYHeadRotO);
+            } else {
+                livingEntity.yBodyRot = lerpDegrees(alpha, this.previousYBodyRot, this.currentYBodyRot);
+                livingEntity.yBodyRotO = lerpDegrees(alpha, this.previousYBodyRotO, this.currentYBodyRotO);
+                livingEntity.yHeadRot = lerpDegrees(alpha, this.previousYHeadRot, this.currentYHeadRot);
+                livingEntity.yHeadRotO = lerpDegrees(alpha, this.previousYHeadRotO, this.currentYHeadRotO);
+            }
+
+            applyWalkAnimation(livingEntity, elapsedTicks);
+        }
+    }
+
+    private void applyWalkAnimation(LivingEntity livingEntity, float elapsedTicks) {
+        WalkAnimationState walkAnimation =
+                ((LivingEntityWalkAnimationAccessor) livingEntity).skyesight$getWalkAnimation();
+
+        WalkAnimationStateAccessor accessor =
+                (WalkAnimationStateAccessor) walkAnimation;
+
+        if (this.entity instanceof Player) {
+            stepPlayerWalkAnimation();
+            accessor.skyesight$setPosition(this.playerWalkPosition);
+            accessor.skyesight$setSpeed(this.playerWalkSpeed);
+            accessor.skyesight$setSpeedOld(this.playerWalkSpeed);
+            return;
+        }
+
+        float extrapolatedWalkPosition =
+                this.walkPosition + this.walkSpeed * elapsedTicks;
+
+        accessor.skyesight$setPosition(extrapolatedWalkPosition);
+        accessor.skyesight$setSpeed(this.walkSpeed);
+        accessor.skyesight$setSpeedOld(this.walkSpeedOld);
+    }
+    private void stepPlayerWalkAnimation() {
+        long now = System.currentTimeMillis();
+        long elapsedMs = now - this.playerAnimationStepMs;
+
+        if (elapsedMs < 45L) {
+            return;
+        }
+
+        int steps = Math.min(4, (int) (elapsedMs / 50L));
+        this.playerAnimationStepMs += steps * 50L;
+
+        for (int i = 0; i < steps; i++) {
+            this.playerWalkSpeed = Mth.lerp(0.4F, this.playerWalkSpeed, this.playerTargetWalkSpeed);
+            this.playerWalkPosition += this.playerWalkSpeed;
+        }
+    }
+
+    private void acceptAnimation(SkyesightEntitySnapshotPayload.Entry entry) {
+        this.animationSnapshotMs = System.currentTimeMillis();
+
+        this.tickCount = entry.tickCount();
+
         this.walkPosition = entry.walkPosition();
         this.walkSpeed = entry.walkSpeed();
         this.walkSpeedOld = entry.walkSpeedOld();
     }
+    private void updatePlayerMovementAnimation(Vec3 from, Vec3 to) {
+        double dx = to.x() - from.x();
+        double dz = to.z() - from.z();
 
+        double velocityDx = this.deltaMovement.x();
+        double velocityDz = this.deltaMovement.z();
+
+        double motionX = Math.abs(dx) > Math.abs(velocityDx) ? dx : velocityDx;
+        double motionZ = Math.abs(dz) > Math.abs(velocityDz) ? dz : velocityDz;
+
+        float horizontalDistance = Mth.sqrt((float) (motionX * motionX + motionZ * motionZ));
+
+        float snapshotTicks = DEFAULT_SNAPSHOT_INTERVAL_MS / 50.0F;
+        float blocksPerTick = horizontalDistance / Math.max(1.0F, snapshotTicks);
+
+        this.playerTargetWalkSpeed = Mth.clamp(blocksPerTick * 4.0F, 0.0F, 1.0F);
+
+        if (horizontalDistance > 0.003F) {
+            float movementYaw =
+                    (float) (Mth.atan2(motionZ, motionX) * (180.0F / Math.PI)) - 90.0F;
+
+            this.playerTargetBodyYaw = clampYawAroundHead(
+                    movementYaw,
+                    this.currentYHeadRot,
+                    45.0F
+            );
+        } else {
+            this.playerTargetBodyYaw = this.currentYBodyRot;
+        }
+    }
+    private void stepPlayerBodyYaw() {
+        this.playerBodyYawO = this.playerBodyYaw;
+
+        this.playerBodyYaw = approachDegrees(
+                this.playerBodyYaw,
+                this.playerTargetBodyYaw,
+                2.0F
+        );
+    }
+    private static float clampYawAroundHead(float bodyYaw, float headYaw, float maxDifference) {
+        float delta = Mth.wrapDegrees(bodyYaw - headYaw);
+        float clampedDelta = Mth.clamp(delta, -maxDifference, maxDifference);
+        return headYaw + clampedDelta;
+    }
+
+    private static float approachDegrees(float current, float target, float maxStep) {
+        float delta = Mth.wrapDegrees(target - current);
+        return current + Mth.clamp(delta, -maxStep, maxStep);
+    }
     private Vec3 interpolatedPosition(long nowMs) {
         return this.previousPosition.lerp(this.currentPosition, interpolationAlpha(nowMs));
     }
@@ -182,9 +301,32 @@ public final class SkyesightVisualEntity {
         return lerpDegrees(interpolationAlpha(nowMs), this.previousXRot, this.currentXRot);
     }
 
+    private float interpolatedYBodyRot(long nowMs) {
+        return lerpDegrees(interpolationAlpha(nowMs), this.previousYBodyRot, this.currentYBodyRot);
+    }
+
+    private float interpolatedYBodyRotO(long nowMs) {
+        return lerpDegrees(interpolationAlpha(nowMs), this.previousYBodyRotO, this.currentYBodyRotO);
+    }
+
+    private float interpolatedYHeadRot(long nowMs) {
+        return lerpDegrees(interpolationAlpha(nowMs), this.previousYHeadRot, this.currentYHeadRot);
+    }
+
+    private float interpolatedYHeadRotO(long nowMs) {
+        return lerpDegrees(interpolationAlpha(nowMs), this.previousYHeadRotO, this.currentYHeadRotO);
+    }
+
     private float interpolationAlpha(long nowMs) {
         long duration = Math.max(1L, this.snapshotEndMs - this.snapshotStartMs);
         return Mth.clamp((float) (nowMs - this.snapshotStartMs) / (float) duration, 0.0F, 1.0F);
+    }
+
+    private float elapsedAnimationTicks() {
+        long now = System.currentTimeMillis();
+        long elapsedMs = Math.max(0L, now - this.animationSnapshotMs);
+
+        return elapsedMs / 50.0F;
     }
 
     private static float lerpDegrees(float alpha, float from, float to) {

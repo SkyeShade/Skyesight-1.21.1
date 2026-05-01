@@ -9,7 +9,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 @EventBusSubscriber(modid = Skyesight.MODID)
 public final class SkyesightServerEntitySnapshotEvents {
-    private static final int SNAPSHOT_INTERVAL_TICKS = 5;
+    private static final int SNAPSHOT_INTERVAL_TICKS = 2;
 
     private SkyesightServerEntitySnapshotEvents() {}
 
