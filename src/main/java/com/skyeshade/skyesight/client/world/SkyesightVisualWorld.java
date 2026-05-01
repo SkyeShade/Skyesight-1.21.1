@@ -64,7 +64,8 @@ public final class SkyesightVisualWorld implements AutoCloseable {
             Matrix4f modelMatrix,
             float partialTick
     ) {
-        this.renderer.renderBlockEntities(
+        this.renderer.renderBlockEntitiesManual(
+                this.chunkReceiver,
                 camera,
                 modelMatrix,
                 partialTick

@@ -3,6 +3,7 @@ package com.skyeshade.skyesight.client.render.sodium;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.skyeshade.skyesight.client.render.entity.SkyesightNameTagSuppressor;
+import com.skyeshade.skyesight.client.world.SkyesightRemoteChunkReceiver;
 import com.skyeshade.skyesight.client.world.SkyesightVisualEntity;
 import net.caffeinemc.mods.sodium.client.gl.device.RenderDevice;
 import net.caffeinemc.mods.sodium.client.render.SodiumWorldRenderer;
@@ -18,6 +19,9 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 
@@ -153,7 +157,8 @@ public final class SkyesightSodiumWorldRenderer implements AutoCloseable {
         }
     }
 
-    public void renderBlockEntities(
+    public void renderBlockEntitiesManual(
+            SkyesightRemoteChunkReceiver chunkReceiver,
             Camera camera,
             Matrix4f modelMatrix,
             float partialTick
@@ -165,22 +170,53 @@ public final class SkyesightSodiumWorldRenderer implements AutoCloseable {
         PoseStack poseStack = new PoseStack();
         poseStack.mulPose(modelMatrix);
 
-        RenderDevice.enterManagedCode();
+        Vec3 cameraPos = camera.getPosition();
+        MultiBufferSource.BufferSource bufferSource = this.minecraft.renderBuffers().bufferSource();
 
-        try (SkyesightSodiumRenderContext.Scope ignored =
-                     SkyesightSodiumRenderContext.push(this.tracker)) {
-            renderer.renderBlockEntities(
-                    poseStack,
-                    minecraft.renderBuffers(),
-                    new it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap<>(),
+        ClientLevel previousLevel = this.minecraft.level;
+
+        try {
+            this.minecraft.level = this.level;
+
+            this.minecraft.getBlockEntityRenderDispatcher().prepare(
+                    this.level,
                     camera,
-                    partialTick,
-                    null
+                    this.minecraft.hitResult
             );
 
-            minecraft.renderBuffers().bufferSource().endBatch();
+            chunkReceiver.forEachLoadedChunk(packed -> {
+                ChunkPos chunkPos = new ChunkPos(packed);
+
+                LevelChunk chunk = this.level.getChunkSource().getChunk(
+                        chunkPos.x,
+                        chunkPos.z,
+                        false
+                );
+
+                if (chunk == null) {
+                    return;
+                }
+
+                for (BlockPos blockEntityPos : chunk.getBlockEntitiesPos()) {
+                    BlockEntity blockEntity = this.level.getBlockEntity(blockEntityPos);
+
+                    if (blockEntity == null || blockEntity.isRemoved()) {
+                        continue;
+                    }
+
+                    renderBlockEntity(
+                            blockEntity,
+                            cameraPos,
+                            poseStack,
+                            bufferSource,
+                            partialTick
+                    );
+                }
+            });
+
+            bufferSource.endBatch();
         } finally {
-            RenderDevice.exitManagedCode();
+            this.minecraft.level = previousLevel;
 
             RenderSystem.disableBlend();
             RenderSystem.defaultBlendFunc();
@@ -190,6 +226,35 @@ public final class SkyesightSodiumWorldRenderer implements AutoCloseable {
             RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         }
     }
+
+
+    private void renderBlockEntity(
+            BlockEntity blockEntity,
+            Vec3 cameraPos,
+            PoseStack poseStack,
+            MultiBufferSource.BufferSource bufferSource,
+            float partialTick
+    ) {
+        BlockPos pos = blockEntity.getBlockPos();
+
+        poseStack.pushPose();
+
+        poseStack.translate(
+                pos.getX() - cameraPos.x(),
+                pos.getY() - cameraPos.y(),
+                pos.getZ() - cameraPos.z()
+        );
+
+        this.minecraft.getBlockEntityRenderDispatcher().render(
+                blockEntity,
+                partialTick,
+                poseStack,
+                bufferSource
+        );
+
+        poseStack.popPose();
+    }
+
     public void scheduleBlockUpdate(BlockPos pos) {
         if (this.level == null) {
             return;

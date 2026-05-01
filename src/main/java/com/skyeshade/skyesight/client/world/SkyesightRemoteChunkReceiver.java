@@ -1,6 +1,7 @@
 package com.skyeshade.skyesight.client.world;
 
 import com.skyeshade.skyesight.Skyesight;
+import it.unimi.dsi.fastutil.longs.LongConsumer;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.caffeinemc.mods.sodium.client.render.chunk.map.ChunkTracker;
@@ -183,7 +184,12 @@ public final class SkyesightRemoteChunkReceiver {
             }
         }
     }
+    public void forEachLoadedChunk(LongConsumer consumer) {
+        for (long packed : this.loadedChunks) {
 
+            consumer.accept(packed);
+        }
+    }
     private void enableChunkLight(int chunkX, int chunkZ) {
         LevelLightEngine lightEngine = this.level.getChunkSource().getLightEngine();
 
