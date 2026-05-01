@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Camera;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.culling.Frustum;
+import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import org.joml.Matrix4f;
@@ -38,6 +39,9 @@ public final class SkyesightVisualWorld implements AutoCloseable {
     public SkyesightSodiumWorldRenderer renderer() {
         return this.renderer;
     }
+    public void scheduleBlockUpdate(BlockPos pos) {
+        this.renderer.scheduleBlockUpdate(pos);
+    }
     public void renderTerrain(
             Camera camera,
             Frustum frustum,
@@ -52,7 +56,17 @@ public final class SkyesightVisualWorld implements AutoCloseable {
                 projectionMatrix
         );
     }
-
+    public void renderBlockEntities(
+            Camera camera,
+            Matrix4f modelMatrix,
+            float partialTick
+    ) {
+        this.renderer.renderBlockEntities(
+                camera,
+                modelMatrix,
+                partialTick
+        );
+    }
     public ResourceKey<Level> dimension() {
         return dimension;
     }

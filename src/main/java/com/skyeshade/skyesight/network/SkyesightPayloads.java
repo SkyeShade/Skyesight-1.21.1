@@ -24,5 +24,12 @@ public final class SkyesightPayloads {
                 SkyesightChunkDataPayload.STREAM_CODEC,
                 SkyesightClientboundPayloads::handleChunkData
         );
+        registrar.playToClient(
+                SkyesightBlockUpdatesPayload.TYPE,
+                SkyesightBlockUpdatesPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> SkyesightClientBlockUpdateHandler.handle(payload)
+                )
+        );
     }
 }

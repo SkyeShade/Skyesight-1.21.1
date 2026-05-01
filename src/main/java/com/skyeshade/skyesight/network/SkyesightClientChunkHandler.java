@@ -1,10 +1,9 @@
 package com.skyeshade.skyesight.network;
 
 import com.skyeshade.skyesight.Skyesight;
-import com.skyeshade.skyesight.client.TemporarySkyesightChunkRequester;
+import com.skyeshade.skyesight.client.SkyesightClientChunkRequester;
 import com.skyeshade.skyesight.client.world.SkyesightVisualWorld;
 import com.skyeshade.skyesight.client.world.SkyesightVisualWorldManager;
-import net.minecraft.world.level.ChunkPos;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -49,7 +48,7 @@ public final class SkyesightClientChunkHandler {
         );
 
         if (inserted) {
-            TemporarySkyesightChunkRequester.markChunkReceived(
+            SkyesightClientChunkRequester.markChunkReceived(
                     payload.dimension(),
                     payload.chunkX(),
                     payload.chunkZ()

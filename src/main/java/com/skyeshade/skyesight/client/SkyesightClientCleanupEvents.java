@@ -17,7 +17,7 @@ public final class SkyesightClientCleanupEvents {
 
     @SubscribeEvent
     public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
-        TemporarySkyesightChunkRequester.reset();
+        SkyesightClientChunkRequester.reset();
         SkyesightVisualWorldManager.closeAll();
         TemporarySkyesightRenderTarget.close();
     }

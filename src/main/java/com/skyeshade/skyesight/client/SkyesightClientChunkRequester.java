@@ -4,8 +4,6 @@ import com.skyeshade.skyesight.Skyesight;
 import com.skyeshade.skyesight.client.world.SkyesightVisualWorld;
 import com.skyeshade.skyesight.client.world.SkyesightVisualWorldManager;
 import com.skyeshade.skyesight.network.SkyesightChunkRequestPayload;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -19,13 +17,14 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class TemporarySkyesightChunkRequester {
+public final class SkyesightClientChunkRequester {
     private static final ResourceLocation DEBUG_VIEW_ID =
             ResourceLocation.fromNamespaceAndPath(Skyesight.MODID, "debug_gui_view");
-
+    private static ChunkPos lastRequestedCenter;
+    private static ResourceKey<Level> lastRequestedDimension;
     private static final ObjectOpenHashSet<PendingChunkKey> pendingChunks = new ObjectOpenHashSet<>();
     private record PendingChunkKey(ResourceKey<Level> dimension, int chunkX, int chunkZ) {}
-    private TemporarySkyesightChunkRequester() {}
+    private SkyesightClientChunkRequester() {}
 
     public static void requestChunksFor(ResourceKey<Level> dimension, Camera camera, int radius) {
         Minecraft minecraft = Minecraft.getInstance();
@@ -52,9 +51,19 @@ public final class TemporarySkyesightChunkRequester {
 
         List<ChunkPos> missing = collectMissingChunks(world, dimension, centerChunkX, centerChunkZ, radius);
 
-        if (missing.isEmpty()) {
+        ChunkPos center = new ChunkPos(centerChunkX, centerChunkZ);
+
+        boolean centerChanged = lastRequestedCenter == null
+                || !lastRequestedCenter.equals(center)
+                || lastRequestedDimension == null
+                || !lastRequestedDimension.equals(dimension);
+
+        if (missing.isEmpty() && !centerChanged) {
             return;
         }
+
+        lastRequestedCenter = center;
+        lastRequestedDimension = dimension;
 
         missing.sort((a, b) -> {
             int da = Math.abs(a.x - centerChunkX) + Math.abs(a.z - centerChunkZ);
@@ -93,7 +102,7 @@ public final class TemporarySkyesightChunkRequester {
         ObjectOpenHashSet<PendingChunkKey> toRemove = new ObjectOpenHashSet<>();
 
         for (PendingChunkKey key : pendingChunks) {
-            if (key.dimension() != dimension) {
+            if (!key.dimension().equals(dimension)) {
                 continue;
             }
 

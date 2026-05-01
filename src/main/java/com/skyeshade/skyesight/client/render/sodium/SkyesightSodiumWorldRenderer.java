@@ -1,6 +1,7 @@
 package com.skyeshade.skyesight.client.render.sodium;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.caffeinemc.mods.sodium.client.gl.device.RenderDevice;
 import net.caffeinemc.mods.sodium.client.render.SodiumWorldRenderer;
 import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;
@@ -12,6 +13,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.culling.Frustum;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 
@@ -93,7 +95,55 @@ public final class SkyesightSodiumWorldRenderer implements AutoCloseable {
             RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         }
     }
+    public void renderBlockEntities(
+            Camera camera,
+            Matrix4f modelMatrix,
+            float partialTick
+    ) {
+        if (this.level == null || this.minecraft.player == null) {
+            return;
+        }
 
+        PoseStack poseStack = new PoseStack();
+        poseStack.mulPose(modelMatrix);
+
+        RenderDevice.enterManagedCode();
+
+        try (SkyesightSodiumRenderContext.Scope ignored =
+                     SkyesightSodiumRenderContext.push(this.tracker)) {
+            renderer.renderBlockEntities(
+                    poseStack,
+                    minecraft.renderBuffers(),
+                    new it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap<>(),
+                    camera,
+                    partialTick,
+                    null
+            );
+
+            minecraft.renderBuffers().bufferSource().endBatch();
+        } finally {
+            RenderDevice.exitManagedCode();
+
+            RenderSystem.disableBlend();
+            RenderSystem.defaultBlendFunc();
+            RenderSystem.enableDepthTest();
+            RenderSystem.depthMask(true);
+            RenderSystem.enableCull();
+            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        }
+    }
+    public void scheduleBlockUpdate(BlockPos pos) {
+        if (this.level == null) {
+            return;
+        }
+
+        int sectionX = pos.getX() >> 4;
+        int sectionY = pos.getY() >> 4;
+        int sectionZ = pos.getZ() >> 4;
+
+        this.renderer.scheduleRebuildForChunk(sectionX, sectionY, sectionZ, true);
+        this.renderer.scheduleTerrainUpdate();
+    }
     public void scheduleTerrainUpdate() {
         this.renderer.scheduleTerrainUpdate();
     }

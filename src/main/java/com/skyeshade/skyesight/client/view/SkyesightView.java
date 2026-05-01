@@ -7,10 +7,9 @@ import com.skyeshade.skyesight.api.SkyesightViewCamera;
 import com.skyeshade.skyesight.api.SkyesightViewHandle;
 import com.skyeshade.skyesight.api.SkyesightViewSpec;
 import com.skyeshade.skyesight.api.SkyesightViewStatus;
-import com.skyeshade.skyesight.client.TemporarySkyesightChunkRequester;
+import com.skyeshade.skyesight.client.SkyesightClientChunkRequester;
 import com.skyeshade.skyesight.client.render.SkyesightCameraMatrices;
 import com.skyeshade.skyesight.client.render.SkyesightFrustumFactory;
-import com.skyeshade.skyesight.client.render.TemporarySkyesightRenderTarget;
 import com.skyeshade.skyesight.client.render.env.SkyesightEnvironmentRendererSelector;
 import com.skyeshade.skyesight.client.render.fog.SkyesightFogRenderer;
 import com.skyeshade.skyesight.client.render.light.SkyesightLightTextureUpdater;
@@ -150,7 +149,7 @@ public final class SkyesightView implements SkyesightViewHandle {
 
         this.status = SkyesightViewStatus.RENDERING;
 
-        TemporarySkyesightChunkRequester.requestChunksFor(
+        SkyesightClientChunkRequester.requestChunksFor(
                 this.dimension,
                 this.camera.minecraftCamera(),
                 this.renderDistanceChunks
@@ -224,7 +223,11 @@ public final class SkyesightView implements SkyesightViewHandle {
                 projectionMatrix,
                 this.renderDistanceChunks
         );
-
+        visualWorld.renderBlockEntities(
+                this.camera.minecraftCamera(),
+                modelMatrix,
+                partialTick
+        );
         SkyesightFogRenderer.clear();
         SkyesightLightTextureUpdater.restoreMain(partialTick);
 

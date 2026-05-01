@@ -6,11 +6,13 @@ import it.unimi.dsi.fastutil.longs.LongSet;
 import net.caffeinemc.mods.sodium.client.render.chunk.map.ChunkTracker;
 import net.minecraft.client.multiplayer.ClientChunkCache;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
 import net.minecraft.network.protocol.game.ClientboundLightUpdatePacketData;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.lighting.LevelLightEngine;
@@ -93,7 +95,23 @@ public final class SkyesightRemoteChunkReceiver {
         this.tracker.onChunkStatusAdded(chunkX, chunkZ, 3);
         return true;
     }
+    public void applyBlockUpdate(BlockPos pos, BlockState state) {
+        ChunkPos chunkPos = new ChunkPos(pos);
 
+        if (!hasChunk(chunkPos.x, chunkPos.z)) {
+            return;
+        }
+
+        this.level.setBlock(pos, state, 19);
+
+        SectionPos sectionPos = SectionPos.of(pos);
+
+        this.level.getChunkSource().onLightUpdate(LightLayer.BLOCK, sectionPos);
+
+        if (this.level.dimensionType().hasSkyLight()) {
+            this.level.getChunkSource().onLightUpdate(LightLayer.SKY, sectionPos);
+        }
+    }
     private void applyLightData(
             int chunkX,
             int chunkZ,
