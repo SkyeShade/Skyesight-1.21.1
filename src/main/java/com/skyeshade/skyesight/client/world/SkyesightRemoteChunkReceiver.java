@@ -95,11 +95,25 @@ public final class SkyesightRemoteChunkReceiver {
         this.tracker.onChunkStatusAdded(chunkX, chunkZ, 3);
         return true;
     }
-    public void applyBlockUpdate(BlockPos pos, BlockState state) {
+    public boolean applyLightUpdate(
+            int chunkX,
+            int chunkZ,
+            ClientboundLightUpdatePacketData lightData
+    ) {
+        if (!hasChunk(chunkX, chunkZ)) {
+            return false;
+        }
+
+        applyLightData(chunkX, chunkZ, lightData);
+        enableChunkLight(chunkX, chunkZ);
+
+        return true;
+    }
+    public boolean applyBlockUpdate(BlockPos pos, BlockState state) {
         ChunkPos chunkPos = new ChunkPos(pos);
 
         if (!hasChunk(chunkPos.x, chunkPos.z)) {
-            return;
+            return false;
         }
 
         this.level.setBlock(pos, state, 19);
@@ -111,6 +125,8 @@ public final class SkyesightRemoteChunkReceiver {
         if (this.level.dimensionType().hasSkyLight()) {
             this.level.getChunkSource().onLightUpdate(LightLayer.SKY, sectionPos);
         }
+
+        return true;
     }
     private void applyLightData(
             int chunkX,

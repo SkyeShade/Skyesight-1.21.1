@@ -31,5 +31,12 @@ public final class SkyesightPayloads {
                         () -> SkyesightClientBlockUpdateHandler.handle(payload)
                 )
         );
+        registrar.playToClient(
+                SkyesightLightDataPayload.TYPE,
+                SkyesightLightDataPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> SkyesightClientLightDataHandler.handle(payload)
+                )
+        );
     }
 }

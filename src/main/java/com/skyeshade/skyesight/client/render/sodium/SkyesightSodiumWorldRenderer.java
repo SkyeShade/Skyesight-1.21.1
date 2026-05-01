@@ -95,6 +95,7 @@ public final class SkyesightSodiumWorldRenderer implements AutoCloseable {
             RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         }
     }
+
     public void renderBlockEntities(
             Camera camera,
             Matrix4f modelMatrix,
@@ -141,8 +142,23 @@ public final class SkyesightSodiumWorldRenderer implements AutoCloseable {
         int sectionY = pos.getY() >> 4;
         int sectionZ = pos.getZ() >> 4;
 
-        this.renderer.scheduleRebuildForChunk(sectionX, sectionY, sectionZ, true);
-        this.renderer.scheduleTerrainUpdate();
+        RenderDevice.enterManagedCode();
+
+        try {
+            this.renderer.scheduleRebuildForChunks(
+                    sectionX - 1,
+                    sectionY - 1,
+                    sectionZ - 1,
+                    sectionX + 1,
+                    sectionY + 1,
+                    sectionZ + 1,
+                    true
+            );
+
+            this.renderer.scheduleTerrainUpdate();
+        } finally {
+            RenderDevice.exitManagedCode();
+        }
     }
     public void scheduleTerrainUpdate() {
         this.renderer.scheduleTerrainUpdate();
@@ -172,5 +188,30 @@ public final class SkyesightSodiumWorldRenderer implements AutoCloseable {
     @Override
     public void close() {
         setLevel(null);
+    }
+
+
+    public void scheduleChunkRebuild(int chunkX, int chunkZ, boolean important) {
+        if (this.level == null) {
+            return;
+        }
+
+        RenderDevice.enterManagedCode();
+
+        try {
+            this.renderer.scheduleRebuildForChunks(
+                    chunkX,
+                    this.level.getMinSection(),
+                    chunkZ,
+                    chunkX,
+                    this.level.getMaxSection() - 1,
+                    chunkZ,
+                    important
+            );
+
+            this.renderer.scheduleTerrainUpdate();
+        } finally {
+            RenderDevice.exitManagedCode();
+        }
     }
 }

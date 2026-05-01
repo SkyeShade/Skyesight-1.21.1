@@ -2,8 +2,6 @@ package com.skyeshade.skyesight.network;
 
 import com.skyeshade.skyesight.client.world.SkyesightVisualWorld;
 import com.skyeshade.skyesight.client.world.SkyesightVisualWorldManager;
-import net.minecraft.core.SectionPos;
-import net.minecraft.world.level.ChunkPos;
 
 public final class SkyesightClientBlockUpdateHandler {
     private SkyesightClientBlockUpdateHandler() {}
@@ -17,10 +15,14 @@ public final class SkyesightClientBlockUpdateHandler {
         }
 
         for (SkyesightBlockUpdatesPayload.Entry update : payload.updates()) {
-            world.chunkReceiver().applyBlockUpdate(update.pos(), update.state());
-            world.renderer().scheduleBlockUpdate(update.pos());
-        }
+            boolean applied = world.chunkReceiver().applyBlockUpdate(
+                    update.pos(),
+                    update.state()
+            );
 
-        world.renderer().scheduleTerrainUpdate();
+            if (applied) {
+                world.renderer().scheduleBlockUpdate(update.pos());
+            }
+        }
     }
 }
