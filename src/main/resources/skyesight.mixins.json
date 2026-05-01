@@ -3,6 +3,7 @@
   "package": "com.skyeshade.skyesight.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "common.LivingEntityAnimationAccessor",
     "common.LivingEntityWalkAnimationAccessor",
     "common.WalkAnimationStateAccessor",
     "server.ServerLevelBlockUpdateMixin"

@@ -1,12 +1,14 @@
 package com.skyeshade.skyesight.server;
 
 import com.skyeshade.skyesight.Skyesight;
+import com.skyeshade.skyesight.mixin.common.LivingEntityAnimationAccessor;
 import com.skyeshade.skyesight.mixin.common.LivingEntityWalkAnimationAccessor;
 import com.skyeshade.skyesight.mixin.common.WalkAnimationStateAccessor;
 import com.skyeshade.skyesight.network.SkyesightEntitySnapshotPayload;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -83,7 +85,16 @@ public final class SkyesightServerEntitySnapshotSender {
         float walkPosition = 0.0F;
         float walkSpeed = 0.0F;
         float walkSpeedOld = 0.0F;
+        int hurtTime = 0;
+        int hurtDuration = 0;
+        int deathTime = 0;
 
+        float attackAnim = 0.0F;
+        float oAttackAnim = 0.0F;
+
+        boolean swinging = false;
+        InteractionHand swingingArm = InteractionHand.MAIN_HAND;
+        int swingTime = 0;
         if (entity instanceof LivingEntity livingEntity) {
             yBodyRot = livingEntity.yBodyRot;
             yBodyRotO = livingEntity.yBodyRotO;
@@ -99,6 +110,19 @@ public final class SkyesightServerEntitySnapshotSender {
             walkPosition = walkAccessor.skyesight$getPosition();
             walkSpeed = walkAccessor.skyesight$getSpeed();
             walkSpeedOld = walkAccessor.skyesight$getSpeedOld();
+            LivingEntityAnimationAccessor animationAccessor =
+                    (LivingEntityAnimationAccessor) livingEntity;
+
+            hurtTime = livingEntity.hurtTime;
+            hurtDuration = livingEntity.hurtDuration;
+            deathTime = livingEntity.deathTime;
+
+            attackAnim = animationAccessor.skyesight$getAttackAnim();
+            oAttackAnim = animationAccessor.skyesight$getOAttackAnim();
+
+            swinging = animationAccessor.skyesight$isSwinging();
+            swingingArm = animationAccessor.skyesight$getSwingingArm();
+            swingTime = animationAccessor.skyesight$getSwingTime();
         }
 
         List<SynchedEntityData.DataValue<?>> entityData =
@@ -131,6 +155,14 @@ public final class SkyesightServerEntitySnapshotSender {
                 walkPosition,
                 walkSpeed,
                 walkSpeedOld,
+                hurtTime,
+                hurtDuration,
+                deathTime,
+                attackAnim,
+                oAttackAnim,
+                swinging,
+                swingingArm,
+                swingTime,
                 entityData
         );
     }

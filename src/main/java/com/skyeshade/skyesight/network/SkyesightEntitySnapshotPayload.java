@@ -9,6 +9,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -45,9 +46,13 @@ public record SkyesightEntitySnapshotPayload(
             UUID uuid = buffer.readUUID();
             EntityType<?> type = ENTITY_TYPE_CODEC.decode(buffer);
             String profileName = buffer.readUtf();
-            double x = buffer.readDouble();
-            double y = buffer.readDouble();
-            double z = buffer.readDouble();
+
+            Vec3 position = new Vec3(
+                    buffer.readDouble(),
+                    buffer.readDouble(),
+                    buffer.readDouble()
+            );
+
             Vec3 deltaMovement = new Vec3(
                     buffer.readDouble(),
                     buffer.readDouble(),
@@ -56,6 +61,7 @@ public record SkyesightEntitySnapshotPayload(
 
             boolean onGround = buffer.readBoolean();
             float fallDistance = buffer.readFloat();
+
             float yRot = buffer.readFloat();
             float xRot = buffer.readFloat();
 
@@ -71,13 +77,24 @@ public record SkyesightEntitySnapshotPayload(
             float walkSpeed = buffer.readFloat();
             float walkSpeedOld = buffer.readFloat();
 
+            int hurtTime = buffer.readVarInt();
+            int hurtDuration = buffer.readVarInt();
+            int deathTime = buffer.readVarInt();
+
+            float attackAnim = buffer.readFloat();
+            float oAttackAnim = buffer.readFloat();
+
+            boolean swinging = buffer.readBoolean();
+            InteractionHand swingingArm = buffer.readEnum(InteractionHand.class);
+            int swingTime = buffer.readVarInt();
+
             List<SynchedEntityData.DataValue<?>> entityData = readEntityData(buffer);
 
             entities.add(new Entry(
                     uuid,
                     type,
                     profileName,
-                    new Vec3(x, y, z),
+                    position,
                     deltaMovement,
                     onGround,
                     fallDistance,
@@ -92,6 +109,14 @@ public record SkyesightEntitySnapshotPayload(
                     walkPosition,
                     walkSpeed,
                     walkSpeedOld,
+                    hurtTime,
+                    hurtDuration,
+                    deathTime,
+                    attackAnim,
+                    oAttackAnim,
+                    swinging,
+                    swingingArm,
+                    swingTime,
                     entityData
             ));
         }
@@ -110,19 +135,28 @@ public record SkyesightEntitySnapshotPayload(
         buffer.writeVarInt(payload.entities().size());
 
         for (Entry entity : payload.entities()) {
+            Vec3 position = entity.position() == null ? Vec3.ZERO : entity.position();
+            Vec3 deltaMovement = entity.deltaMovement() == null ? Vec3.ZERO : entity.deltaMovement();
+            String profileName = entity.profileName() == null ? "" : entity.profileName();
+            InteractionHand swingingArm = entity.swingingArm() == null
+                    ? InteractionHand.MAIN_HAND
+                    : entity.swingingArm();
+
             buffer.writeUUID(entity.uuid());
             ENTITY_TYPE_CODEC.encode(buffer, entity.type());
-            buffer.writeUtf(entity.profileName());
+            buffer.writeUtf(profileName);
 
-            buffer.writeDouble(entity.position().x());
-            buffer.writeDouble(entity.position().y());
-            buffer.writeDouble(entity.position().z());
-            buffer.writeDouble(entity.deltaMovement().x());
-            buffer.writeDouble(entity.deltaMovement().y());
-            buffer.writeDouble(entity.deltaMovement().z());
+            buffer.writeDouble(position.x());
+            buffer.writeDouble(position.y());
+            buffer.writeDouble(position.z());
+
+            buffer.writeDouble(deltaMovement.x());
+            buffer.writeDouble(deltaMovement.y());
+            buffer.writeDouble(deltaMovement.z());
 
             buffer.writeBoolean(entity.onGround());
             buffer.writeFloat(entity.fallDistance());
+
             buffer.writeFloat(entity.yRot());
             buffer.writeFloat(entity.xRot());
 
@@ -137,6 +171,17 @@ public record SkyesightEntitySnapshotPayload(
             buffer.writeFloat(entity.walkPosition());
             buffer.writeFloat(entity.walkSpeed());
             buffer.writeFloat(entity.walkSpeedOld());
+
+            buffer.writeVarInt(entity.hurtTime());
+            buffer.writeVarInt(entity.hurtDuration());
+            buffer.writeVarInt(entity.deathTime());
+
+            buffer.writeFloat(entity.attackAnim());
+            buffer.writeFloat(entity.oAttackAnim());
+
+            buffer.writeBoolean(entity.swinging());
+            buffer.writeEnum(swingingArm);
+            buffer.writeVarInt(entity.swingTime());
 
             writeEntityData(buffer, entity.entityData());
         }
@@ -194,6 +239,14 @@ public record SkyesightEntitySnapshotPayload(
             float walkPosition,
             float walkSpeed,
             float walkSpeedOld,
+            int hurtTime,
+            int hurtDuration,
+            int deathTime,
+            float attackAnim,
+            float oAttackAnim,
+            boolean swinging,
+            InteractionHand swingingArm,
+            int swingTime,
             List<SynchedEntityData.DataValue<?>> entityData
     ) {}
 }
