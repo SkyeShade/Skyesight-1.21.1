@@ -74,7 +74,7 @@ public final class TemporarySkyesightDebugOverlay {
 
         graphics.fill(x - 2, y - 2, x + width + 2, y + height + 2, 0xAA000000);
 
-        if (view.outputTarget() != null && view.status().isRenderable()) {
+        if (view.outputTarget() != null) {
             TemporarySkyesightOutputBlitter.blit(
                     graphics,
                     view.colorTextureId(),
@@ -105,13 +105,6 @@ public final class TemporarySkyesightDebugOverlay {
                 false
         );
 
-        graphics.drawString(
-                minecraft.font,
-                view.status().name(),
-                x + 8,
-                y + 36,
-                0xFFE0E0E0,
-                false
-        );
+
     }
 }

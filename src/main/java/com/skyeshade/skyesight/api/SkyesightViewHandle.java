@@ -16,7 +16,6 @@ public interface SkyesightViewHandle {
 
     SkyesightRenderMode renderMode();
 
-    SkyesightViewStatus status();
 
     SkyesightViewCamera camera();
 

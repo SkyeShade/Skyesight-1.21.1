@@ -25,10 +25,17 @@ public final class SkyesightVisualEntity {
 
     private int tickCount;
 
-    private float yBodyRot;
-    private float yBodyRotO;
-    private float yHeadRot;
-    private float yHeadRotO;
+    private float previousYBodyRot;
+    private float currentYBodyRot;
+
+    private float previousYBodyRotO;
+    private float currentYBodyRotO;
+
+    private float previousYHeadRot;
+    private float currentYHeadRot;
+
+    private float previousYHeadRotO;
+    private float currentYHeadRotO;
 
     private float walkPosition;
     private float walkSpeed;
@@ -37,6 +44,7 @@ public final class SkyesightVisualEntity {
     private long snapshotStartMs;
     private long snapshotEndMs;
 
+    private long animationSnapshotMs;
     public SkyesightVisualEntity(
             Entity entity,
             SkyesightEntitySnapshotPayload.Entry entry
@@ -56,6 +64,17 @@ public final class SkyesightVisualEntity {
         this.snapshotStartMs = now;
         this.snapshotEndMs = now + DEFAULT_SNAPSHOT_INTERVAL_MS;
 
+        this.previousYBodyRot = entry.yBodyRot();
+        this.currentYBodyRot = entry.yBodyRot();
+
+        this.previousYBodyRotO = entry.yBodyRotO();
+        this.currentYBodyRotO = entry.yBodyRotO();
+
+        this.previousYHeadRot = entry.yHeadRot();
+        this.currentYHeadRot = entry.yHeadRot();
+
+        this.previousYHeadRotO = entry.yHeadRotO();
+        this.currentYHeadRotO = entry.yHeadRotO();
         acceptAnimation(entry);
         applyInterpolated();
     }
@@ -88,7 +107,7 @@ public final class SkyesightVisualEntity {
         float yRot = interpolatedYRot(now);
         float xRot = interpolatedXRot(now);
 
-        this.entity.tickCount = this.tickCount;
+        this.entity.tickCount = this.tickCount + Mth.floor(elapsedAnimationTicks());
         this.entity.setPos(position);
 
         this.entity.xo = position.x();
@@ -102,10 +121,14 @@ public final class SkyesightVisualEntity {
         this.entity.xRotO = xRot;
 
         if (this.entity instanceof LivingEntity livingEntity) {
-            livingEntity.yBodyRot = this.yBodyRot;
-            livingEntity.yBodyRotO = this.yBodyRotO;
-            livingEntity.yHeadRot = this.yHeadRot;
-            livingEntity.yHeadRotO = this.yHeadRotO;
+            float elapsedTicks = elapsedAnimationTicks();
+
+            float alpha = interpolationAlpha(System.currentTimeMillis());
+
+            livingEntity.yBodyRot = lerpDegrees(alpha, this.previousYBodyRot, this.currentYBodyRot);
+            livingEntity.yBodyRotO = lerpDegrees(alpha, this.previousYBodyRotO, this.currentYBodyRotO);
+            livingEntity.yHeadRot = lerpDegrees(alpha, this.previousYHeadRot, this.currentYHeadRot);
+            livingEntity.yHeadRotO = lerpDegrees(alpha, this.previousYHeadRotO, this.currentYHeadRotO);
 
             WalkAnimationState walkAnimation =
                     ((LivingEntityWalkAnimationAccessor) livingEntity).skyesight$getWalkAnimation();
@@ -113,19 +136,34 @@ public final class SkyesightVisualEntity {
             WalkAnimationStateAccessor accessor =
                     (WalkAnimationStateAccessor) walkAnimation;
 
-            accessor.skyesight$setPosition(this.walkPosition);
+            float extrapolatedWalkPosition =
+                    this.walkPosition + this.walkSpeed * elapsedTicks;
+
+            accessor.skyesight$setPosition(extrapolatedWalkPosition);
             accessor.skyesight$setSpeed(this.walkSpeed);
             accessor.skyesight$setSpeedOld(this.walkSpeedOld);
         }
     }
+    private float elapsedAnimationTicks() {
+        long now = System.currentTimeMillis();
+        long elapsedMs = Math.max(0L, now - this.animationSnapshotMs);
 
+        return elapsedMs / 50.0F;
+    }
     private void acceptAnimation(SkyesightEntitySnapshotPayload.Entry entry) {
+        this.animationSnapshotMs = System.currentTimeMillis();
+
         this.tickCount = entry.tickCount();
 
-        this.yBodyRot = entry.yBodyRot();
-        this.yBodyRotO = entry.yBodyRotO();
-        this.yHeadRot = entry.yHeadRot();
-        this.yHeadRotO = entry.yHeadRotO();
+        this.previousYBodyRot = this.currentYBodyRot;
+        this.previousYBodyRotO = this.currentYBodyRotO;
+        this.previousYHeadRot = this.currentYHeadRot;
+        this.previousYHeadRotO = this.currentYHeadRotO;
+
+        this.currentYBodyRot = entry.yBodyRot();
+        this.currentYBodyRotO = entry.yBodyRotO();
+        this.currentYHeadRot = entry.yHeadRot();
+        this.currentYHeadRotO = entry.yHeadRotO();
 
         this.walkPosition = entry.walkPosition();
         this.walkSpeed = entry.walkSpeed();

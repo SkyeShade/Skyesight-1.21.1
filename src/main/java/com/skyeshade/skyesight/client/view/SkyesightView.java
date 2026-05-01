@@ -6,7 +6,6 @@ import com.skyeshade.skyesight.api.SkyesightRenderMode;
 import com.skyeshade.skyesight.api.SkyesightViewCamera;
 import com.skyeshade.skyesight.api.SkyesightViewHandle;
 import com.skyeshade.skyesight.api.SkyesightViewSpec;
-import com.skyeshade.skyesight.api.SkyesightViewStatus;
 import com.skyeshade.skyesight.client.SkyesightClientChunkRequester;
 import com.skyeshade.skyesight.client.render.SkyesightCameraMatrices;
 import com.skyeshade.skyesight.client.render.SkyesightFrustumFactory;
@@ -30,7 +29,6 @@ public final class SkyesightView implements SkyesightViewHandle {
     private final SkyesightRenderMode renderMode;
 
     private ResourceKey<Level> dimension;
-    private SkyesightViewStatus status = SkyesightViewStatus.CREATED;
     private int renderDistanceChunks;
     private int width;
     private int height;
@@ -66,10 +64,6 @@ public final class SkyesightView implements SkyesightViewHandle {
         return this.renderMode;
     }
 
-    @Override
-    public SkyesightViewStatus status() {
-        return this.status;
-    }
 
     @Override
     public SkyesightViewCamera camera() {
@@ -135,7 +129,6 @@ public final class SkyesightView implements SkyesightViewHandle {
         Minecraft minecraft = Minecraft.getInstance();
 
         if (minecraft.level == null || minecraft.player == null || this.target == null) {
-            this.status = SkyesightViewStatus.UNAVAILABLE;
             return;
         }
 
@@ -143,11 +136,9 @@ public final class SkyesightView implements SkyesightViewHandle {
                 SkyesightVisualWorldManager.getOrCreate(this.dimension);
 
         if (visualWorld == null) {
-            this.status = SkyesightViewStatus.UNAVAILABLE;
             return;
         }
 
-        this.status = SkyesightViewStatus.RENDERING;
 
         SkyesightClientChunkRequester.requestChunksFor(
                 this.dimension,
@@ -250,7 +241,7 @@ public final class SkyesightView implements SkyesightViewHandle {
         RenderSystem.enableCull();
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
-        this.status = SkyesightViewStatus.READY;
+
     }
 
     @Override
@@ -260,6 +251,5 @@ public final class SkyesightView implements SkyesightViewHandle {
             this.target = null;
         }
 
-        this.status = SkyesightViewStatus.CLOSED;
     }
 }
