@@ -9,7 +9,8 @@
     "common.WalkAnimationStateAccessor",
     "server.LivingEntitySwingMixin",
     "server.ServerLevelBlockEventMixin",
-    "server.ServerLevelBlockUpdateMixin"
+    "server.ServerLevelBlockUpdateMixin",
+    "server.ServerLevelParticlesMixin"
   ],
   "client": [
     "client.CameraInvoker",

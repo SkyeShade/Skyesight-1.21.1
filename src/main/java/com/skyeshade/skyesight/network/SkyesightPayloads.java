@@ -60,5 +60,12 @@ public final class SkyesightPayloads {
                         () -> SkyesightClientEntityAnimationHandler.handle(payload)
                 )
         );
+        registrar.playToClient(
+                SkyesightParticlePayload.TYPE,
+                SkyesightParticlePayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> SkyesightClientParticleHandler.handle(payload)
+                )
+        );
     }
 }
