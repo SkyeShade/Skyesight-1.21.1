@@ -15,6 +15,7 @@
   "client": [
     "client.CameraInvoker",
     "client.EntityRendererNameTagMixin",
+
     "client.LevelRendererAccessor",
     "client.LevelRendererCloudInvoker",
     "client.LevelRendererEndSkyInvoker",

@@ -1,23 +1,10 @@
 package com.skyeshade.skyesight.client;
 
-import com.mojang.blaze3d.pipeline.TextureTarget;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.skyeshade.skyesight.Skyesight;
 import com.skyeshade.skyesight.api.SkyesightRenderMode;
 import com.skyeshade.skyesight.api.SkyesightViewHandle;
 import com.skyeshade.skyesight.api.SkyesightViewSpec;
-import com.skyeshade.skyesight.client.render.*;
-import com.skyeshade.skyesight.client.render.env.SkyesightEnvironmentRendererSelector;
-import com.skyeshade.skyesight.client.render.fog.SkyesightFogRenderer;
-import com.skyeshade.skyesight.client.render.light.SkyesightLightTextureContext;
-import com.skyeshade.skyesight.client.render.light.SkyesightLightTextureUpdater;
-import com.skyeshade.skyesight.client.world.SkyesightVisualWorld;
-import com.skyeshade.skyesight.client.world.SkyesightVisualWorldManager;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.culling.Frustum;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -27,7 +14,6 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
-import org.lwjgl.opengl.GL11;
 
 @EventBusSubscriber(
         modid = Skyesight.MODID,
@@ -38,6 +24,15 @@ public final class TemporarySkyesightLevelRenderTest {
             ResourceLocation.fromNamespaceAndPath(Skyesight.MODID, "debug_gui_view");
 
     private static final int RENDER_DIST = 4;
+    private static final boolean FOLLOW_MAIN_CAMERA = true;
+    private static final Vec3 FOLLOW_OFFSET =
+            new Vec3(4.0D, 0.0D, 0.0D);
+    private static final Vec3 DEBUG_CAMERA_POSITION =
+            new Vec3(0.5D, 90.0D, 0.5D);
+
+    private static final float DEBUG_CAMERA_YAW = 0.0F;
+    private static final float DEBUG_CAMERA_PITCH = 0.0F;
+    private static final float DEBUG_CAMERA_ROLL = 0.0F;
 
     private TemporarySkyesightLevelRenderTest() {}
 
@@ -57,11 +52,18 @@ public final class TemporarySkyesightLevelRenderTest {
 
         SkyesightViewHandle view = ensureDebugView();
 
-        view.camera().copyFromMainCameraWithOffset(new Vec3(4.0D, 0.0D, 0.0D));
+        if (FOLLOW_MAIN_CAMERA) {
+            view.camera().copyFromMainCameraWithOffset(FOLLOW_OFFSET);
+        } else {
+            view.camera().setPosition(DEBUG_CAMERA_POSITION);
+            view.camera().setRotation(
+                    DEBUG_CAMERA_YAW,
+                    DEBUG_CAMERA_PITCH,
+                    DEBUG_CAMERA_ROLL
+            );
+        }
 
-        Matrix4f projectionMatrix = new Matrix4f(event.getProjectionMatrix());
-
-        view.render(partialTick, projectionMatrix);
+        view.render(partialTick, new Matrix4f());
     }
 
     private static SkyesightViewHandle ensureDebugView() {
@@ -71,7 +73,7 @@ public final class TemporarySkyesightLevelRenderTest {
                         new SkyesightViewSpec(
                                 DEBUG_VIEW_ID,
                                 Level.OVERWORLD,
-                                Vec3.ZERO,
+                                DEBUG_CAMERA_POSITION,
                                 new Quaternionf(),
                                 RENDER_DIST,
                                 640,

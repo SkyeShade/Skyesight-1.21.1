@@ -9,6 +9,8 @@ import com.skyeshade.skyesight.api.SkyesightViewSpec;
 import com.skyeshade.skyesight.client.SkyesightClientChunkRequester;
 import com.skyeshade.skyesight.client.render.SkyesightCameraMatrices;
 import com.skyeshade.skyesight.client.render.SkyesightFrustumFactory;
+import com.skyeshade.skyesight.client.render.SkyesightProjectionMatrices;
+import com.skyeshade.skyesight.client.render.SkyesightProjectionScope;
 import com.skyeshade.skyesight.client.render.env.SkyesightEnvironmentRendererSelector;
 import com.skyeshade.skyesight.client.render.fog.SkyesightFogRenderer;
 import com.skyeshade.skyesight.client.render.light.SkyesightLightTextureUpdater;
@@ -123,9 +125,26 @@ public final class SkyesightView implements SkyesightViewHandle {
     public int colorTextureId() {
         return this.target.getColorTextureId();
     }
-
     @Override
-    public void render(float partialTick, Matrix4f projectionMatrix) {
+    public void render(float partialTick, Matrix4f ignoredProjectionMatrix) {
+        float aspect = (float) this.width / (float) this.height;
+
+        Matrix4f projectionMatrix = SkyesightProjectionMatrices.perspective(
+                70.0F,
+                aspect,
+                0.05F,
+                Math.max(512.0F, this.renderDistanceChunks * 16.0F)
+        );
+
+        try (
+
+                SkyesightProjectionScope projectionScope = new SkyesightProjectionScope(projectionMatrix)
+        ) {
+            renderInternal(partialTick, projectionMatrix);
+        }
+    }
+
+    private void renderInternal(float partialTick, Matrix4f projectionMatrix) {
         Minecraft minecraft = Minecraft.getInstance();
 
         if (minecraft.level == null || minecraft.player == null || this.target == null) {
