@@ -126,11 +126,7 @@ public final class SkyesightServerEntitySnapshotSender {
         }
 
         List<SynchedEntityData.DataValue<?>> entityData =
-                entity.getEntityData().getNonDefaultValues();
-
-        if (entityData == null) {
-            entityData = List.of();
-        }
+                SkyesightEntityDataPacker.packAll(entity);
         String profileName = "";
 
         if (entity instanceof ServerPlayer player) {

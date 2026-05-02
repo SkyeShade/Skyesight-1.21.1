@@ -5,6 +5,7 @@
   "mixins": [
     "common.LivingEntityAnimationAccessor",
     "common.LivingEntityWalkAnimationAccessor",
+    "common.SynchedEntityDataAccessor",
     "common.WalkAnimationStateAccessor",
     "server.LivingEntitySwingMixin",
     "server.ServerLevelBlockEventMixin",
