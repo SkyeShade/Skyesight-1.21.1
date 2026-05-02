@@ -11,6 +11,8 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
@@ -23,6 +25,7 @@ public record SkyesightEntitySnapshotPayload(
         ResourceKey<Level> dimension,
         List<Entry> entities
 ) implements CustomPacketPayload {
+
     public static final Type<SkyesightEntitySnapshotPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(Skyesight.MODID, "entity_snapshot"));
 
@@ -89,7 +92,7 @@ public record SkyesightEntitySnapshotPayload(
             int swingTime = buffer.readVarInt();
 
             List<SynchedEntityData.DataValue<?>> entityData = readEntityData(buffer);
-
+            List<EquipmentEntry> equipment = readEquipment(buffer);
             entities.add(new Entry(
                     uuid,
                     type,
@@ -117,7 +120,8 @@ public record SkyesightEntitySnapshotPayload(
                     swinging,
                     swingingArm,
                     swingTime,
-                    entityData
+                    entityData,
+                    equipment
             ));
         }
 
@@ -184,6 +188,8 @@ public record SkyesightEntitySnapshotPayload(
             buffer.writeVarInt(entity.swingTime());
 
             writeEntityData(buffer, entity.entityData());
+
+            writeEquipment(buffer, entity.equipment());
         }
     }
 
@@ -219,7 +225,36 @@ public record SkyesightEntitySnapshotPayload(
     public Type<? extends CustomPacketPayload> type() {
         return TYPE;
     }
+    private static List<EquipmentEntry> readEquipment(RegistryFriendlyByteBuf buffer) {
+        int count = buffer.readVarInt();
+        List<EquipmentEntry> equipment = new ArrayList<>(count);
 
+        for (int i = 0; i < count; i++) {
+            EquipmentSlot slot = buffer.readEnum(EquipmentSlot.class);
+            ItemStack stack = ItemStack.OPTIONAL_STREAM_CODEC.decode(buffer);
+
+            equipment.add(new EquipmentEntry(slot, stack));
+        }
+
+        return equipment;
+    }
+
+    private static void writeEquipment(
+            RegistryFriendlyByteBuf buffer,
+            List<EquipmentEntry> equipment
+    ) {
+        if (equipment == null || equipment.isEmpty()) {
+            buffer.writeVarInt(0);
+            return;
+        }
+
+        buffer.writeVarInt(equipment.size());
+
+        for (EquipmentEntry entry : equipment) {
+            buffer.writeEnum(entry.slot());
+            ItemStack.OPTIONAL_STREAM_CODEC.encode(buffer, entry.stack());
+        }
+    }
     public record Entry(
             UUID uuid,
             EntityType<?> type,
@@ -247,6 +282,11 @@ public record SkyesightEntitySnapshotPayload(
             boolean swinging,
             InteractionHand swingingArm,
             int swingTime,
-            List<SynchedEntityData.DataValue<?>> entityData
+            List<SynchedEntityData.DataValue<?>> entityData,
+            List<EquipmentEntry> equipment
+    ) {}
+    public record EquipmentEntry(
+            EquipmentSlot slot,
+            ItemStack stack
     ) {}
 }

@@ -9,10 +9,8 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.WalkAnimationState;
+import net.minecraft.world.entity.*;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.network.PacketDistributor;
 
@@ -132,6 +130,8 @@ public final class SkyesightServerEntitySnapshotSender {
         if (entity instanceof ServerPlayer player) {
             profileName = player.getGameProfile().getName();
         }
+        List<SkyesightEntitySnapshotPayload.EquipmentEntry> equipment =
+                collectEquipment(entity);
         return new SkyesightEntitySnapshotPayload.Entry(
                 entity.getUUID(),
                 entity.getType(),
@@ -159,7 +159,26 @@ public final class SkyesightServerEntitySnapshotSender {
                 swinging,
                 swingingArm,
                 swingTime,
-                entityData
+                entityData,
+                equipment
         );
+    }
+    private static List<SkyesightEntitySnapshotPayload.EquipmentEntry> collectEquipment(Entity entity) {
+        if (!(entity instanceof LivingEntity livingEntity)) {
+            return List.of();
+        }
+
+        List<SkyesightEntitySnapshotPayload.EquipmentEntry> equipment = new ArrayList<>();
+
+        for (EquipmentSlot slot : EquipmentSlot.values()) {
+            ItemStack stack = livingEntity.getItemBySlot(slot);
+
+            equipment.add(new SkyesightEntitySnapshotPayload.EquipmentEntry(
+                    slot,
+                    stack.copy()
+            ));
+        }
+
+        return equipment;
     }
 }

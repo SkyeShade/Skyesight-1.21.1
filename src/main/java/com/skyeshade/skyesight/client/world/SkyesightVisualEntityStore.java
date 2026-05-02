@@ -10,6 +10,7 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.*;
 
@@ -39,6 +40,7 @@ public final class SkyesightVisualEntityStore {
                 }
 
                 applyEntityData(entity, entry.entityData());
+                applyEquipment(entity, entry.equipment());
 
                 visualEntity = new SkyesightVisualEntity(entity, entry);
                 this.entities.put(entry.uuid(), visualEntity);
@@ -46,6 +48,7 @@ public final class SkyesightVisualEntityStore {
             }
 
             applyEntityData(visualEntity.entity(), entry.entityData());
+            applyEquipment(visualEntity.entity(), entry.equipment());
             visualEntity.acceptSnapshot(entry);
         }
 
@@ -98,5 +101,22 @@ public final class SkyesightVisualEntityStore {
         }
 
         entity.getEntityData().assignValues(values);
+    }
+    private static void applyEquipment(
+            Entity entity,
+            List<SkyesightEntitySnapshotPayload.EquipmentEntry> equipment
+    ) {
+        if (!(entity instanceof LivingEntity livingEntity)) {
+            return;
+        }
+
+        for (SkyesightEntitySnapshotPayload.EquipmentEntry entry : equipment) {
+            ItemStack stack = entry.stack();
+
+            livingEntity.setItemSlot(
+                    entry.slot(),
+                    stack.copy()
+            );
+        }
     }
 }
