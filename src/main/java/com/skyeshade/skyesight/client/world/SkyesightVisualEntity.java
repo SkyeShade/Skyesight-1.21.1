@@ -18,7 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public final class SkyesightVisualEntity {
-    private static final long DEFAULT_SNAPSHOT_INTERVAL_MS = 250L;
+    private static final long DEFAULT_SNAPSHOT_INTERVAL_MS = 100L;
 
     private final Entity entity;
 
