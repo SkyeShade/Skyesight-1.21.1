@@ -13,7 +13,11 @@ public final class SkyesightVisualWorldManager {
     private static final Map<ResourceKey<Level>, SkyesightVisualWorld> WORLDS = new HashMap<>();
 
     private SkyesightVisualWorldManager() {}
-
+    public static void tickAll() {
+        for (SkyesightVisualWorld world : WORLDS.values()) {
+            world.tick();
+        }
+    }
     public static SkyesightVisualWorld getOrCreate(ResourceKey<Level> dimension) {
         SkyesightVisualWorld existing = WORLDS.get(dimension);
 

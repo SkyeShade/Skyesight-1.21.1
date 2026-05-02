@@ -57,7 +57,7 @@ public final class TemporarySkyesightLevelRenderTest {
 
         SkyesightViewHandle view = ensureDebugView();
 
-        view.camera().copyFromMainCameraWithOffset(new Vec3(1000.0D, 0.0D, 0.0D));
+        view.camera().copyFromMainCameraWithOffset(new Vec3(4.0D, 0.0D, 0.0D));
 
         Matrix4f projectionMatrix = new Matrix4f(event.getProjectionMatrix());
 

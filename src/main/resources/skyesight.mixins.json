@@ -6,6 +6,7 @@
     "common.LivingEntityAnimationAccessor",
     "common.LivingEntityWalkAnimationAccessor",
     "common.WalkAnimationStateAccessor",
+    "server.ServerLevelBlockEventMixin",
     "server.ServerLevelBlockUpdateMixin"
   ],
   "client": [

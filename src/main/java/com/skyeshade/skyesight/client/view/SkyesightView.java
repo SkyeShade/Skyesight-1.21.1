@@ -214,6 +214,7 @@ public final class SkyesightView implements SkyesightViewHandle {
                 projectionMatrix,
                 this.renderDistanceChunks
         );
+
         visualWorld.renderBlockEntities(
                 this.camera.minecraftCamera(),
                 modelMatrix,

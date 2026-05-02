@@ -12,7 +12,12 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
 import net.minecraft.network.protocol.game.ClientboundLightUpdatePacketData;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.LevelChunk;
@@ -189,6 +194,58 @@ public final class SkyesightRemoteChunkReceiver {
 
             consumer.accept(packed);
         }
+    }
+    public void tickBlockEntities() {
+        for (long packed : this.loadedChunks) {
+            ChunkPos chunkPos = new ChunkPos(packed);
+
+            LevelChunk chunk = this.level.getChunkSource().getChunk(
+                    chunkPos.x,
+                    chunkPos.z,
+                    false
+            );
+
+            if (chunk == null) {
+                continue;
+            }
+
+            for (BlockPos blockEntityPos : chunk.getBlockEntitiesPos()) {
+                BlockEntity blockEntity = this.level.getBlockEntity(blockEntityPos);
+
+                if (blockEntity == null || blockEntity.isRemoved()) {
+                    continue;
+                }
+
+                BlockState state = this.level.getBlockState(blockEntityPos);
+
+                BlockEntityTicker<BlockEntity> ticker =
+                        getTicker(this.level, state, blockEntity);
+
+                if (ticker == null) {
+                    continue;
+                }
+
+                ticker.tick(this.level, blockEntityPos, state, blockEntity);
+            }
+        }
+    }
+    @SuppressWarnings("unchecked")
+    private static <T extends BlockEntity> BlockEntityTicker<T> getTicker(
+            Level level,
+            BlockState state,
+            T blockEntity
+    ) {
+        Block block = state.getBlock();
+
+        if (!(block instanceof EntityBlock entityBlock)) {
+            return null;
+        }
+
+        return (BlockEntityTicker<T>) entityBlock.getTicker(
+                level,
+                state,
+                blockEntity.getType()
+        );
     }
     private void enableChunkLight(int chunkX, int chunkZ) {
         LevelLightEngine lightEngine = this.level.getChunkSource().getLightEngine();

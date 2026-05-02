@@ -46,5 +46,12 @@ public final class SkyesightPayloads {
                         () -> SkyesightClientEntityHandler.handle(payload)
                 )
         );
+        registrar.playToClient(
+                SkyesightBlockEventPayload.TYPE,
+                SkyesightBlockEventPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> SkyesightClientBlockEventHandler.handle(payload)
+                )
+        );
     }
 }

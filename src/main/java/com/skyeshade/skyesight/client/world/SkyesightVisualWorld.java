@@ -39,6 +39,9 @@ public final class SkyesightVisualWorld implements AutoCloseable {
     public SkyesightVisualEntityStore entityStore() {
         return this.entityStore;
     }
+    public void tick() {
+        this.chunkReceiver.tickBlockEntities();
+    }
     public SkyesightSodiumWorldRenderer renderer() {
         return this.renderer;
     }
@@ -58,6 +61,9 @@ public final class SkyesightVisualWorld implements AutoCloseable {
                 modelMatrix,
                 projectionMatrix
         );
+    }
+    public void tickBlockEntities() {
+        this.chunkReceiver.tickBlockEntities();
     }
     public void renderBlockEntities(
             Camera camera,
