@@ -4,6 +4,7 @@ import com.skyeshade.skyesight.mixin.common.LivingEntityAnimationAccessor;
 import com.skyeshade.skyesight.mixin.common.LivingEntityWalkAnimationAccessor;
 import com.skyeshade.skyesight.mixin.common.WalkAnimationStateAccessor;
 import com.skyeshade.skyesight.network.SkyesightEntitySnapshotPayload;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
@@ -11,6 +12,10 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.WalkAnimationState;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 public final class SkyesightVisualEntity {
     private static final long DEFAULT_SNAPSHOT_INTERVAL_MS = 250L;
@@ -66,15 +71,14 @@ public final class SkyesightVisualEntity {
     private int hurtDuration;
     private int deathTime;
 
-    private float previousAttackAnim;
-    private float currentAttackAnim;
 
-    private float previousOAttackAnim;
-    private float currentOAttackAnim;
-
-    private boolean swinging;
-    private InteractionHand swingingArm;
-    private int swingTime;
+    private boolean localSwinging;
+    private InteractionHand localSwingingArm = InteractionHand.MAIN_HAND;
+    private long localSwingStartMs;
+    private long localSwingLastMs;
+    private int localSwingDurationTicks = 6;
+    private float localAttackAnim;
+    private float localOAttackAnim;
     public SkyesightVisualEntity(
             Entity entity,
             SkyesightEntitySnapshotPayload.Entry entry
@@ -117,11 +121,6 @@ public final class SkyesightVisualEntity {
         this.playerBodyYaw = entry.yBodyRot();
         this.playerBodyYawO = entry.yBodyRotO();
         this.playerTargetBodyYaw = entry.yBodyRot();
-        this.previousAttackAnim = entry.attackAnim();
-        this.currentAttackAnim = entry.attackAnim();
-
-        this.previousOAttackAnim = entry.oAttackAnim();
-        this.currentOAttackAnim = entry.oAttackAnim();
         acceptAnimation(entry);
         updatePlayerMovementAnimation(entry.position(), entry.position());
         applyInterpolated();
@@ -225,26 +224,55 @@ public final class SkyesightVisualEntity {
         LivingEntityAnimationAccessor accessor =
                 (LivingEntityAnimationAccessor) livingEntity;
 
-        float alpha = interpolationAlpha(System.currentTimeMillis());
+        if (this.localSwinging) {
+            applyLocalSwingAnimation(accessor);
+            return;
+        }
 
-        float interpolatedOAttackAnim = Mth.lerp(
-                alpha,
-                this.previousOAttackAnim,
-                this.currentOAttackAnim
+        accessor.skyesight$setSwinging(false);
+        accessor.skyesight$setSwingTime(0);
+        accessor.skyesight$setOAttackAnim(0.0F);
+        accessor.skyesight$setAttackAnim(0.0F);
+    }
+    private void applyLocalSwingAnimation(LivingEntityAnimationAccessor accessor) {
+        long now = System.currentTimeMillis();
+
+        float elapsedTicks =
+                (now - this.localSwingStartMs) / 50.0F;
+
+        float previousElapsedTicks =
+                (this.localSwingLastMs - this.localSwingStartMs) / 50.0F;
+
+        this.localSwingLastMs = now;
+
+        float progress = Mth.clamp(
+                elapsedTicks / (float) this.localSwingDurationTicks,
+                0.0F,
+                1.0F
         );
 
-        float interpolatedAttackAnim = Mth.lerp(
-                alpha,
-                this.previousAttackAnim,
-                this.currentAttackAnim
+        float previousProgress = Mth.clamp(
+                previousElapsedTicks / (float) this.localSwingDurationTicks,
+                0.0F,
+                1.0F
         );
 
-        accessor.skyesight$setOAttackAnim(interpolatedOAttackAnim);
-        accessor.skyesight$setAttackAnim(interpolatedAttackAnim);
+        this.localOAttackAnim = previousProgress;
+        this.localAttackAnim = progress;
 
-        accessor.skyesight$setSwinging(this.swinging);
-        accessor.skyesight$setSwingingArm(this.swingingArm);
-        accessor.skyesight$setSwingTime(this.swingTime + extrapolatedTicks);
+        accessor.skyesight$setSwinging(progress < 1.0F);
+        accessor.skyesight$setSwingingArm(this.localSwingingArm);
+        accessor.skyesight$setSwingTime(Mth.floor(elapsedTicks));
+        accessor.skyesight$setOAttackAnim(this.localOAttackAnim);
+        accessor.skyesight$setAttackAnim(this.localAttackAnim);
+
+        if (progress >= 1.0F) {
+            this.localSwinging = false;
+            accessor.skyesight$setSwinging(false);
+            accessor.skyesight$setSwingTime(0);
+            accessor.skyesight$setOAttackAnim(0.0F);
+            accessor.skyesight$setAttackAnim(0.0F);
+        }
     }
     private void applyWalkAnimation(LivingEntity livingEntity, float elapsedTicks) {
         WalkAnimationState walkAnimation =
@@ -304,18 +332,27 @@ public final class SkyesightVisualEntity {
         this.hurtDuration = entry.hurtDuration();
         this.deathTime = entry.deathTime();
 
+    }
+    public void triggerSwing(InteractionHand hand) {
         long now = System.currentTimeMillis();
-        float alpha = interpolationAlpha(now);
 
-        this.previousAttackAnim = Mth.lerp(alpha, this.previousAttackAnim, this.currentAttackAnim);
-        this.previousOAttackAnim = Mth.lerp(alpha, this.previousOAttackAnim, this.currentOAttackAnim);
+        this.localSwinging = true;
+        this.localSwingingArm = hand;
+        this.localSwingStartMs = now;
+        this.localSwingLastMs = now;
+        this.localAttackAnim = 0.0F;
+        this.localOAttackAnim = 0.0F;
 
-        this.currentAttackAnim = entry.attackAnim();
-        this.currentOAttackAnim = entry.oAttackAnim();
+        if (this.entity instanceof LivingEntity livingEntity) {
+            LivingEntityAnimationAccessor accessor =
+                    (LivingEntityAnimationAccessor) livingEntity;
 
-        this.swinging = entry.swinging();
-        this.swingingArm = entry.swingingArm();
-        this.swingTime = entry.swingTime();
+            accessor.skyesight$setSwinging(true);
+            accessor.skyesight$setSwingingArm(hand);
+            accessor.skyesight$setSwingTime(0);
+            accessor.skyesight$setOAttackAnim(0.0F);
+            accessor.skyesight$setAttackAnim(0.0F);
+        }
     }
     private void updatePlayerMovementAnimation(Vec3 from, Vec3 to) {
         double dx = to.x() - from.x();

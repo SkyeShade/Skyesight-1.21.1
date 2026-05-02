@@ -15,14 +15,16 @@ import java.util.*;
 
 public final class SkyesightVisualEntityStore {
     private final ClientLevel level;
-    private final Map<java.util.UUID, SkyesightVisualEntity> entities = new HashMap<>();
+    private final Map<UUID, SkyesightVisualEntity> entities = new HashMap<>();
 
     public SkyesightVisualEntityStore(ClientLevel level) {
         this.level = level;
     }
-
+    public SkyesightVisualEntity get(UUID uuid) {
+        return this.entities.get(uuid);
+    }
     public void applySnapshot(SkyesightEntitySnapshotPayload payload) {
-        Set<java.util.UUID> seen = new HashSet<>();
+        Set<UUID> seen = new HashSet<>();
 
         for (SkyesightEntitySnapshotPayload.Entry entry : payload.entities()) {
             seen.add(entry.uuid());
